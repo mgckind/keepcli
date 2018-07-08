@@ -3,5 +3,6 @@ keepcli/keepcli
 keepcli/__pycache__
 keepcli/*.pyc
 keepcli.egg-info/
+keepcli/update_version.sh
 RELEASE_NOTES
 HELP
