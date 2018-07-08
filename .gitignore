@@ -1,0 +1,7 @@
+keepcli/keepcli
+*.pyc
+keepcli/__pycache__
+keepcli/*.pyc
+keepcli.egg-info/
+RELEASE_NOTES
+HELP
