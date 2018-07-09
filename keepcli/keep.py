@@ -5,6 +5,7 @@ import getpass
 import gkeepapi
 from termcolor import colored
 import yaml
+import keepcli.kcliparser as kcliparser
 from keepcli.version import __version__
 
 try:
@@ -85,7 +86,7 @@ class GKeep(cmd.Cmd):
         pass
 
     def do_version(self, arg):
-        print('Current version: {}'.format(__version__))
+        print('\nCurrent version: {}'.format(__version__))
 
     def do_shortcuts(self, arg):
         """
@@ -385,7 +386,6 @@ class GKeep(cmd.Cmd):
 
 
 def cli():
-    print('Starting...')
     kcli_path = os.path.join(os.environ["HOME"], ".keepcli/")
     if not os.path.exists(kcli_path):
         os.makedirs(kcli_path)
@@ -394,6 +394,8 @@ def cli():
     except KeyError:
         auth_file = os.path.join(kcli_path, "auth.yaml")
     conf_file = os.path.join(kcli_path, "config.yaml")
+    args = kcliparser.get_args()
+    print('Starting...')
     GKeep(auth_file=auth_file).cmdloop()
 
 if __name__ == '__main__':
