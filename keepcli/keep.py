@@ -1,10 +1,16 @@
 import cmd
 import sys
 import os
+import getpass
 import gkeepapi
 from termcolor import colored
 import yaml
 from keepcli.version import __version__
+
+try:
+    input = raw_input
+except NameError:
+    pass
 
 colors = {
     'gray': 'grey',
@@ -48,25 +54,35 @@ def get_color(entry):
         return colored(entry.title, "white")
 
 
-
-
 class GKeep(cmd.Cmd):
 
     def __init__(self, auth_file):
         super().__init__()
         print('Logging in...')
-        self.prompt = 'GK ~> '
+        self.prompt = 'keepcli [] ~> '
         self.keep = gkeepapi.Keep()
-        with open(auth_file, 'r') as auth:
-            conn = yaml.load(auth)
-        self.connect = self.keep.login(conn['user'], conn['passwd'])
+        try:
+            with open(auth_file, 'r') as auth:
+                conn = yaml.load(auth)
+        except FileNotFoundError:
+            conn = {}
+            print('\nAuth file {} not found, will create one... '
+                  '(Google App password is strongly recommended)\n'.format(auth_file))
+            conn['user'] = input('Enter username : ')
+            conn['passwd'] = getpass.getpass(prompt='Enter password : ')
+        try:
+            self.connect = self.keep.login(conn['user'], conn['passwd'])
+            with open(auth_file, 'w') as auth:
+                yaml.dump(conn, auth, default_flow_style=False)
+        except gkeepapi.exception.LoginException:
+            print('\nUser/Password not valid (auth file : {})\n'.format(auth_file))
+            sys.exit(1)
         self.current = None
         self.do_refresh(None)
         self.complete_ul = self.complete_useList
 
     def emptyline(self):
         pass
-
 
     def do_version(self, arg):
         print('Current version: {}'.format(__version__))
@@ -78,7 +94,6 @@ class GKeep(cmd.Cmd):
         cs: current show --> shows current List/Note
         """
         self.do_help('shortcuts')
-
 
     def do_refresh(self, arg):
         """Sync and Refresh content"""
@@ -95,7 +110,6 @@ class GKeep(cmd.Cmd):
                     self.lists.append(n.title)
                 if n.type.name == 'Note':
                     self.notes.append(n.title)
-
 
     def do_cs(self, arg):
         self.do_current('show')
@@ -158,9 +172,11 @@ class GKeep(cmd.Cmd):
 
     def do_show(self, arg):
         """ Print content os List/Note """
-        if arg == '':
+        if arg == '' and self.current is None:
             self.do_help('show')
             return
+        else:
+            arg = self.current.title
         for n in self.entries:
             if arg == n.title:
                 print()
@@ -257,6 +273,7 @@ class GKeep(cmd.Cmd):
                 #TODO: ask before deletion
                 print('Current List set to: {}'.format(n.title))
                 self.current = n
+                self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
                 self.current_checked = [i.text for i in n.checked]
                 self.current_unchecked = [i.text for i in n.unchecked]
 
@@ -271,6 +288,7 @@ class GKeep(cmd.Cmd):
             if arg == n.title:
                 print()
                 print('Current Note set to: {}'.format(n.title))
+                self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
                 self.current = n
 
     def complete_useNote(self, text, line, start_index, end_index):
@@ -288,7 +306,6 @@ class GKeep(cmd.Cmd):
             self.do_refresh(None)
         else:
             print('{} is not a Note'.format(self.current.title))
-
 
     def do_checkItem(self, arg):
         if self.current is None:
@@ -366,12 +383,16 @@ class GKeep(cmd.Cmd):
             except:
                 pass
 
+
 def cli():
     print('Starting...')
     kcli_path = os.path.join(os.environ["HOME"], ".keepcli/")
     if not os.path.exists(kcli_path):
         os.makedirs(kcli_path)
-    auth_file = os.path.join(kcli_path, "auth.yaml")
+    try:
+        auth_file = os.environ["KEEPCLI_AUTH"]
+    except KeyError:
+        auth_file = os.path.join(kcli_path, "auth.yaml")
     conf_file = os.path.join(kcli_path, "config.yaml")
     GKeep(auth_file=auth_file).cmdloop()
 
