@@ -3,7 +3,6 @@ import sys
 import os
 import getpass
 import gkeepapi
-from termcolor import colored
 import yaml
 import keepcli.kcliparser as kcliparser
 from keepcli.version import __version__
@@ -12,6 +11,24 @@ try:
     input = raw_input
 except NameError:
     pass
+
+
+def without_color(line, color, mode=0):
+    return line
+
+
+try:
+    from termcolor import colored as with_color
+
+    def colored(line, color, mode=1):
+        if mode == 1:
+            return with_color(line, color)
+        else:
+            return line
+except ImportError:
+    colored = without_color
+
+
 
 colors = {
     'gray': 'grey',
@@ -37,19 +54,20 @@ options_commands = ['note', 'list']
 options_current = ['show', 'color']
 
 
-def print_list(List):
+def print_list(List, mode):
     times_unchecked = [item.timestamps.created for item in List.unchecked]
     unchecked = [x for _, x in
                  sorted(zip(times_unchecked, List.unchecked), key=lambda pair: pair[0])]
     times_checked = [item.timestamps.created for item in List.checked]
     checked = [x for _, x in sorted(zip(times_checked, List.checked), key=lambda pair: pair[0])]
+    print('Unchecked items: {} out of {}'.format(len(unchecked), len(checked)+len(unchecked)))
     for i in unchecked:
-        print(colored(i, "red"))
+        print(colored(i, "red", mode))
     for i in checked:
-        print(colored(i, "green"))
+        print(colored(i, "green", mode))
 
 
-def get_color(entry, color_only=False):
+def get_color(entry, mode, color_only=False):
     try:
         color = colors[entry.color.name.lower()]
     except KeyError:
@@ -57,13 +75,14 @@ def get_color(entry, color_only=False):
     if color_only:
         return color
     else:
-        return colored(entry.title, color)
+        return colored(entry.title, color, mode)
 
 
 class GKeep(cmd.Cmd):
 
-    def __init__(self, auth_file):
-        super().__init__()
+    def __init__(self, auth_file, conf_file):
+        #super().__init__()
+        cmd.Cmd.__init__(self)
         print('Logging in...')
         self.prompt = 'keepcli [] ~> '
         self.keep = gkeepapi.Keep()
@@ -85,6 +104,9 @@ class GKeep(cmd.Cmd):
             print('\nUser/Password not valid (auth file : {})\n'.format(auth_file))
             sys.exit(1)
         self.current = None
+        with open(conf_file, 'r') as confile:
+            self.conf = yaml.load(confile)
+        self.termcolor = 1 if self.conf['termcolor'] else 0
         self.do_refresh(None)
         self.complete_ul = self.complete_useList
         self.complete_un = self.complete_useNote
@@ -112,19 +134,27 @@ class GKeep(cmd.Cmd):
         self.titles = []
         self.lists = []
         self.notes = []
+        self.lists_obj = []
+        self.notes_obj = []
         for n in self.entries:
             if not n.trashed:
                 self.titles.append(n.title)
                 if n.type.name == 'List':
                     self.lists.append(n.title)
+                    self.lists_obj.append(n)
                 if n.type.name == 'Note':
                     self.notes.append(n.title)
+                    self.notes_obj.append(n)
+
 
     def do_whoami(self, arg):
         """ Print information about user """
         print()
         print('User    : {}'.format(self.username))
         print('Entries : {} Notes and {} Lists'.format(len(self.notes), len(self.lists)))
+        allitem = sum([len(n.items) for n in self.lists_obj])
+        uncheck = sum([len(n.unchecked) for n in self.lists_obj])
+        print('Uncheck Items: {} out of {}'.format(uncheck, allitem))
         print()
 
 
@@ -144,9 +174,11 @@ class GKeep(cmd.Cmd):
         """Exit the program"""
         return True
 
-    def do_connect(self, arg):
-        """ I'm connected ? """
-        print(colored(self.connect, "green"))
+    def do_config(self, arg):
+        """ Print configuration options"""
+        print('Current configuration:\n')
+        for item in self.conf.items():
+            print('{} : {}'.format(*item))
 
     def do_entries(self, arg):
         """ Show  """
@@ -175,10 +207,10 @@ class GKeep(cmd.Cmd):
                 if lists and n.type.name == 'Note':
                     display = False
             try:
-                data = {'title': colored(n.title, colors[n.color.name.lower()]), 'status': status,
+                data = {'title': colored(n.title, colors[n.color.name.lower()], self.termcolor), 'status': status,
                         'type': n.type.name}
             except KeyError:
-                data = {'title': colored(n.title, 'white'), 'status': status,
+                data = {'title': colored(n.title, 'white', self.termcolor), 'status': status,
                         'type': n.type.name}
             if display:
                 print('{title: <30} {status: <10}  [ {type} ]'.format(**data))
@@ -200,11 +232,13 @@ class GKeep(cmd.Cmd):
         for n in self.entries:
             if arg == n.title:
                 print()
-                title = colored('============{:=<30}'.format(' '+n.title+' '), get_color(n, True))
+                title = colored('============{:=<30}'.format(' '+n.title+' '),
+                                get_color(n, self.termcolor, True), self.termcolor)
                 print(title)
                 print()
-                print(n.text) if n.type.name == 'Note' else print_list(n)
-                bottom = colored('============{:=<30}'.format(' '+n.title+' '), get_color(n, True))
+                print(n.text) if n.type.name == 'Note' else print_list(n, self.termcolor)
+                bottom = colored('============{:=<30}'.format(' '+n.title+' '),
+                                 get_color(n, self.termcolor, True), self.termcolor)
                 print(bottom)
 
                 print()
@@ -236,7 +270,7 @@ class GKeep(cmd.Cmd):
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
-        print('Current entry: {}'.format(get_color(self.current)))
+        print('Current entry: {}'.format(get_color(self.current, self.termcolor)))
         if 'show' in arg:
             self.do_show(self.current.title)
         if 'color' in arg:
@@ -398,6 +432,14 @@ class GKeep(cmd.Cmd):
                 pass
 
 
+def write_conf(conf_file):
+    defaults = {
+                'termcolor': False,
+               }
+    if not os.path.exists(conf_file):
+        with open(conf_file, 'w') as conf:
+            yaml.dump(defaults, conf, default_flow_style=False)
+
 def cli():
     kcli_path = os.path.join(os.environ["HOME"], ".keepcli/")
     if not os.path.exists(kcli_path):
@@ -407,9 +449,10 @@ def cli():
     except KeyError:
         auth_file = os.path.join(kcli_path, "auth.yaml")
     conf_file = os.path.join(kcli_path, "config.yaml")
+    write_conf(conf_file)
     args = kcliparser.get_args()
     print('Starting...')
-    GKeep(auth_file=auth_file).cmdloop()
+    GKeep(auth_file=auth_file, conf_file=conf_file).cmdloop()
 
 if __name__ == '__main__':
     cli()
