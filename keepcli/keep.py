@@ -28,8 +28,6 @@ try:
 except ImportError:
     colored = without_color
 
-
-
 colors = {
     'gray': 'grey',
     'red': 'red',
@@ -179,6 +177,7 @@ class GKeep(cmd.Cmd):
         print('Current configuration:\n')
         for item in self.conf.items():
             print('{} : {}'.format(*item))
+        print()
 
     def do_entries(self, arg):
         """ Show  """
@@ -435,10 +434,20 @@ class GKeep(cmd.Cmd):
 def write_conf(conf_file):
     defaults = {
                 'termcolor': False,
+                'autosync': True,
                }
     if not os.path.exists(conf_file):
         with open(conf_file, 'w') as conf:
             yaml.dump(defaults, conf, default_flow_style=False)
+    else:
+        with open(conf_file, 'r') as conf:
+            current = yaml.load(conf)
+            for k in defaults.keys():
+                if current.get(k) is None:
+                    current[k] = defaults[k]
+        with open(conf_file, 'w') as conf:
+            yaml.dump(current, conf, default_flow_style=False)
+
 
 def cli():
     kcli_path = os.path.join(os.environ["HOME"], ".keepcli/")
