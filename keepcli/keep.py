@@ -39,7 +39,8 @@ options_current = ['show', 'color']
 
 def print_list(List):
     times_unchecked = [item.timestamps.created for item in List.unchecked]
-    unchecked = [x for _, x in sorted(zip(times_unchecked, List.unchecked), key=lambda pair: pair[0])]
+    unchecked = [x for _, x in
+                 sorted(zip(times_unchecked, List.unchecked), key=lambda pair: pair[0])]
     times_checked = [item.timestamps.created for item in List.checked]
     checked = [x for _, x in sorted(zip(times_checked, List.checked), key=lambda pair: pair[0])]
     for i in unchecked:
@@ -48,11 +49,15 @@ def print_list(List):
         print(colored(i, "green"))
 
 
-def get_color(entry):
+def get_color(entry, color_only=False):
     try:
-        return colored(entry.title, colors[entry.color.name.lower()])
+        color = colors[entry.color.name.lower()]
     except KeyError:
-        return colored(entry.title, "white")
+        color = "white"
+    if color_only:
+        return color
+    else:
+        return colored(entry.title, color)
 
 
 class GKeep(cmd.Cmd):
@@ -91,6 +96,7 @@ class GKeep(cmd.Cmd):
     def do_shortcuts(self, arg):
         """
         ul: useList --> select a list
+        un: useNote --> select a note
         ai: addItem --> add item to a current List
         cs: current show --> shows current List/Note
         """
@@ -120,6 +126,9 @@ class GKeep(cmd.Cmd):
 
     def do_ul(self, arg):
         self.do_useList(arg)
+
+    def do_un(self, arg):
+        self.do_useNote(arg)
 
     def do_exit(self, arg):
         """Exit the program"""
@@ -176,22 +185,16 @@ class GKeep(cmd.Cmd):
         if arg == '' and self.current is None:
             self.do_help('show')
             return
-        else:
+        if self.current is not None:
             arg = self.current.title
         for n in self.entries:
             if arg == n.title:
                 print()
-                try:
-                    title = colored('============{:=<30}'.format(' '+n.title+' '), colors[n.color.name.lower()])
-                except:
-                    title = colored('============{:=<30}'.format(' '+n.title+' '), "white")
+                title = colored('============{:=<30}'.format(' '+n.title+' '), get_color(n, True))
                 print(title)
                 print()
                 print(n.text) if n.type.name == 'Note' else print_list(n)
-                try:
-                    bottom = colored('============{:=<30}'.format(''), colors[n.color.name.lower()])
-                except:
-                    bottom = colored('============{:=<30}'.format(''), "white")
+                bottom = colored('============{:=<30}'.format(' '+n.title+' '), get_color(n, True))
                 print(bottom)
 
                 print()
