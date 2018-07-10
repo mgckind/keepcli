@@ -50,6 +50,7 @@ colorsGK = {
 options_entries = ['all', 'notes', 'lists']
 options_commands = ['note', 'list']
 options_current = ['show', 'color']
+options_config = ['set']
 
 
 def print_list(List, mode):
@@ -174,10 +175,29 @@ class GKeep(cmd.Cmd):
 
     def do_config(self, arg):
         """ Print configuration options"""
-        print('Current configuration:\n')
-        for item in self.conf.items():
-            print('{} : {}'.format(*item))
-        print()
+        line = "".join(arg.split())
+        if arg == '':
+            print('Current configuration:\n')
+            for item in self.conf.items():
+                print('{} : {}'.format(*item))
+                print()
+        if 'set' in line:
+            action = line[line.startswith('set') and len('set'):].lstrip()
+            action = "".join(action.split())
+            if '=' in action:
+                key, value = action.split('=')
+            elif ':' in action:
+                key, value = action.split(':')
+            else:
+                print('format key = value')
+                return
+            try:
+                print(self.conf[key])
+            except KeyError:
+                print('{} is not a valid configuration option'.format(key))
+
+
+
 
     def do_entries(self, arg):
         """ Show  """
