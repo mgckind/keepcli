@@ -80,12 +80,14 @@ class GKeep(cmd.Cmd):
             self.connect = self.keep.login(conn['user'], conn['passwd'])
             with open(auth_file, 'w') as auth:
                 yaml.dump(conn, auth, default_flow_style=False)
+            self.username = conn['user']
         except gkeepapi.exception.LoginException:
             print('\nUser/Password not valid (auth file : {})\n'.format(auth_file))
             sys.exit(1)
         self.current = None
         self.do_refresh(None)
         self.complete_ul = self.complete_useList
+        self.complete_un = self.complete_useNote
 
     def emptyline(self):
         pass
@@ -117,6 +119,14 @@ class GKeep(cmd.Cmd):
                     self.lists.append(n.title)
                 if n.type.name == 'Note':
                     self.notes.append(n.title)
+
+    def do_whoami(self, arg):
+        """ Print information about user """
+        print()
+        print('User    : {}'.format(self.username))
+        print('Entries : {} Notes and {} Lists'.format(len(self.notes), len(self.lists)))
+        print()
+
 
     def do_cs(self, arg):
         self.do_current('show')
