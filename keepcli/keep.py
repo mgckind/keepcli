@@ -14,6 +14,8 @@ except NameError:
 
 
 def without_color(line, color, mode=0):
+    """This function does nothing to the input line.
+    Just a ancillary function when there is not output color"""
     return line
 
 
@@ -54,6 +56,16 @@ options_config = ['set']
 
 
 def print_list(List, mode):
+    """
+    Prints out checked followed by unchecked items from a list sorted by time of creation
+
+    Parameters
+    ----------
+    List : gkeepapi.node.List
+           The input list class
+    mode : int
+           mode to be used by colored to whether (mode=1) or not mode=0) use termcolor
+    """
     times_unchecked = [item.timestamps.created for item in List.unchecked]
     unchecked = [x for _, x in
                  sorted(zip(times_unchecked, List.unchecked), key=lambda pair: pair[0])]
@@ -67,6 +79,23 @@ def print_list(List, mode):
 
 
 def get_color(entry, mode, color_only=False):
+    """
+    Get the color conversion from gkeeppii colors to termcolor colors
+
+    Parameters
+    ----------
+    entry : gkeepapi.node
+        The Note class
+    mode : int
+        Whether to use colors (mode = 1) or not (mode = 0)
+    color_only : bool, optional
+        If True it just returns the colot to be used, if False it returns the colord title
+
+    Returns
+    -------
+    str
+        Color string or a colored title depending on the value for color_only
+    """
     try:
         color = colors[entry.color.name.lower()]
     except KeyError:
@@ -78,7 +107,7 @@ def get_color(entry, mode, color_only=False):
 
 
 class GKeep(cmd.Cmd):
-
+    """ The main cmd class"""
     def __init__(self, auth_file, conf_file):
         #super().__init__()
         cmd.Cmd.__init__(self)
@@ -195,6 +224,12 @@ class GKeep(cmd.Cmd):
                 print(self.conf[key])
             except KeyError:
                 print('{} is not a valid configuration option'.format(key))
+
+    def complete_config(self, text, line, start_index, end_index):
+        if text:
+            return [option for option in options_config if option.startswith(text)]
+        else:
+            return options_config
 
 
 
