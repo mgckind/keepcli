@@ -138,6 +138,80 @@ class GKeep(cmd.Cmd):
         self.do_refresh(None)
         self.complete_ul = self.complete_useList
         self.complete_un = self.complete_useNote
+        self.doc_header = colored(
+                          ' *Keep Commands*', "cyan", self.termcolor) + ' (type help <command>):'
+
+    def do_help(self, arg):
+        """
+        List available commands with "help" or detailed help with "help cmd".
+        """
+        if arg:
+            try:
+                func = getattr(self, 'help_' + arg)
+            except AttributeError:
+                try:
+                    doc = getattr(self, 'do_' + arg).__doc__
+                    if doc:
+                        doc = str(doc)
+                        if doc.find('DB:') > -1:
+                            doc = doc.replace('DB:', '')
+                        self.stdout.write("%s\n" % str(doc))
+                        return
+                except AttributeError:
+                    pass
+                self.stdout.write("%s\n" % str(self.nohelp % (arg,)))
+                return
+            func()
+        else:
+            #self.stdout.write(str(self.intro) + "\n")
+            names = self.get_names()
+            cmds_doc = []
+            cmds_undoc = []
+            cmds_db = []
+            help = {}
+            for name in names:
+                if name[:5] == 'help_':
+                    help[name[5:]] = 1
+            names.sort()
+            # There can be duplicates if routines overridden
+            prevname = ''
+            for name in names:
+                if name[:3] == 'do_':
+                    if name == prevname:
+                        continue
+                    prevname = name
+                    cmd = name[3:]
+                    if cmd in help:
+                        cmds_doc.append(cmd)
+                        del help[cmd]
+                    elif getattr(self, name).__doc__:
+                        doc = getattr(self, name).__doc__
+                        if doc.find('DB:') > -1:
+                            cmds_db.append(cmd)
+                        else:
+                            cmds_doc.append(cmd)
+                    else:
+                        cmds_undoc.append(cmd)
+            self.stdout.write("%s\n" % str(self.doc_leader))
+            self.print_topics(self.doc_header, cmds_doc, 80)
+            self.print_topics('DB', cmds_db, 80)
+            self.print_topics('Misc', list(help.keys()), 80)
+            #self.print_topics('Undo', cmds_undoc, 80)
+
+            print(colored(' *Default Input*', 'cyan', self.termcolor))
+            print(self.ruler * 80)
+            print()
+
+
+    def print_topics(self, header, cmds, maxcol):
+        if header is not None:
+            if cmds:
+                self.stdout.write("%s\n" % str(header))
+                if self.ruler:
+                    self.stdout.write("%s\n" % str(self.ruler * maxcol))
+                self.columnize(cmds, maxcol - 1)
+                self.stdout.write("\n")
+
 
     def emptyline(self):
         pass
