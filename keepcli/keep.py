@@ -109,7 +109,7 @@ def get_color(entry, mode, color_only=False):
 class GKeep(cmd.Cmd):
     """ The main cmd class"""
     def __init__(self, auth_file, conf_file):
-        #super().__init__()
+        # super().__init__()
         cmd.Cmd.__init__(self)
         print('Logging in...')
         self.prompt = 'keepcli [] ~> '
@@ -163,7 +163,7 @@ class GKeep(cmd.Cmd):
                 return
             func()
         else:
-            #self.stdout.write(str(self.intro) + "\n")
+            # self.stdout.write(str(self.intro) + "\n")
             names = self.get_names()
             cmds_doc = []
             cmds_undoc = []
@@ -196,10 +196,10 @@ class GKeep(cmd.Cmd):
             self.print_topics(self.doc_header, cmds_doc, 80)
             self.print_topics('DB', cmds_db, 80)
             self.print_topics('Misc', list(help.keys()), 80)
-            #self.print_topics('Undo', cmds_undoc, 80)
+            # self.print_topics('Undo', cmds_undoc, 80)
 
-            print(colored(' *Default Input*', 'cyan', self.termcolor))
-            print(self.ruler * 80)
+            # print(colored(' *Default Input*', 'cyan', self.termcolor))
+            # print(self.ruler * 80)
             print()
 
 
@@ -212,11 +212,14 @@ class GKeep(cmd.Cmd):
                 self.columnize(cmds, maxcol - 1)
                 self.stdout.write("\n")
 
-
     def emptyline(self):
+        """ Do nothing when there is no input """
         pass
 
     def do_version(self, arg):
+        """
+        Print current keepcli version
+        """
         print('\nCurrent version: {}'.format(__version__))
 
     def do_shortcuts(self, arg):
@@ -546,7 +549,7 @@ class GKeep(cmd.Cmd):
 
     def do_clear(self, line):
         """
-        Clear screen. There is a shortcut by typing . on the interpreter
+        Clears the screen.
         """
         sys.stdout.flush()
         if line is None:
