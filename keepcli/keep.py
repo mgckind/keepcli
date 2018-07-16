@@ -139,6 +139,8 @@ class GKeep(cmd.Cmd):
         self.complete_ul = self.complete_useList
         self.complete_un = self.complete_useNote
         self.doc_header = colored(
+                          ' *Other Commands*', "cyan", self.termcolor) + ' (type help <command>):'
+        self.keep_header = colored(
                           ' *Keep Commands*', "cyan", self.termcolor) + ' (type help <command>):'
 
     def do_help(self, arg):
@@ -153,8 +155,8 @@ class GKeep(cmd.Cmd):
                     doc = getattr(self, 'do_' + arg).__doc__
                     if doc:
                         doc = str(doc)
-                        if doc.find('DB:') > -1:
-                            doc = doc.replace('DB:', '')
+                        if doc.find('KEEP:') > -1:
+                            doc = doc.replace('KEEP:', '')
                         self.stdout.write("%s\n" % str(doc))
                         return
                 except AttributeError:
@@ -167,7 +169,7 @@ class GKeep(cmd.Cmd):
             names = self.get_names()
             cmds_doc = []
             cmds_undoc = []
-            cmds_db = []
+            cmds_keep = []
             help = {}
             for name in names:
                 if name[:5] == 'help_':
@@ -186,22 +188,21 @@ class GKeep(cmd.Cmd):
                         del help[cmd]
                     elif getattr(self, name).__doc__:
                         doc = getattr(self, name).__doc__
-                        if doc.find('DB:') > -1:
-                            cmds_db.append(cmd)
+                        if 'KEEP:' in doc:
+                            cmds_keep.append(cmd)
                         else:
                             cmds_doc.append(cmd)
                     else:
                         cmds_undoc.append(cmd)
             self.stdout.write("%s\n" % str(self.doc_leader))
+            self.print_topics(self.keep_header, cmds_keep, 80)
             self.print_topics(self.doc_header, cmds_doc, 80)
-            self.print_topics('DB', cmds_db, 80)
-            self.print_topics('Misc', list(help.keys()), 80)
+            # self.print_topics('Misc', list(help.keys()), 80)
             # self.print_topics('Undo', cmds_undoc, 80)
 
             # print(colored(' *Default Input*', 'cyan', self.termcolor))
             # print(self.ruler * 80)
             print()
-
 
     def print_topics(self, header, cmds, maxcol):
         if header is not None:
@@ -224,6 +225,8 @@ class GKeep(cmd.Cmd):
 
     def do_shortcuts(self, arg):
         """
+        KEEP:Undocumented shortcuts used in keepcli.
+
         ul: useList --> select a list
         un: useNote --> select a note
         ai: addItem --> add item to a current List
@@ -232,7 +235,9 @@ class GKeep(cmd.Cmd):
         self.do_help('shortcuts')
 
     def do_refresh(self, arg):
-        """Sync and Refresh content"""
+        """
+        KEEP:Sync and Refresh content
+        """
         print('Syncing...')
         self.keep.sync()
         self.entries = self.keep.all()
@@ -251,9 +256,10 @@ class GKeep(cmd.Cmd):
                     self.notes.append(n.title)
                     self.notes_obj.append(n)
 
-
     def do_whoami(self, arg):
-        """ Print information about user """
+        """
+        Print information about user
+        """
         print()
         print('User    : {}'.format(self.username))
         print('Entries : {} Notes and {} Lists'.format(len(self.notes), len(self.lists)))
@@ -261,7 +267,6 @@ class GKeep(cmd.Cmd):
         uncheck = sum([len(n.unchecked) for n in self.lists_obj])
         print('Uncheck Items: {} out of {}'.format(uncheck, allitem))
         print()
-
 
     def do_cs(self, arg):
         self.do_current('show')
@@ -276,11 +281,15 @@ class GKeep(cmd.Cmd):
         self.do_useNote(arg)
 
     def do_exit(self, arg):
-        """Exit the program"""
+        """
+        Exit the program
+        """
         return True
 
     def do_config(self, arg):
-        """ Print configuration options"""
+        """
+        Print configuration options
+        """
         line = "".join(arg.split())
         if arg == '':
             print('Current configuration:\n')
@@ -308,11 +317,16 @@ class GKeep(cmd.Cmd):
         else:
             return options_config
 
-
-
-
     def do_entries(self, arg):
-        """ Show  """
+        """
+        KEEP:Show  all lists and notes for the user
+
+        Usage:
+
+        entries all: Included archived and deleted items
+        entries lists: Show only lists
+        entries notes: Show only note
+        """
 
         line = "".join(arg.split())
         active = True
@@ -354,7 +368,9 @@ class GKeep(cmd.Cmd):
             return options_entries
 
     def do_show(self, arg):
-        """ Print content os List/Note """
+        """
+        KEEP:Print content os List/Note
+        """
         if arg == '' and self.current is None:
             self.do_help('show')
             return
@@ -381,6 +397,13 @@ class GKeep(cmd.Cmd):
             return self.titles
 
     def do_delete(self, arg):
+        """
+        KEEP:Delete entry based on its name. Works for lists and notes_obj
+
+        Usage:
+
+        delete <item>
+        """
         for n in self.entries:
             if arg == n.title:
                 print()
@@ -398,6 +421,9 @@ class GKeep(cmd.Cmd):
 
 
     def do_current(self, arg):
+        """
+        KEEP:Show current list or note being used
+        """
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
@@ -427,6 +453,14 @@ class GKeep(cmd.Cmd):
 
 
     def do_create(self, arg):
+        """
+        KEEP:Create a note or a list
+
+        Usage:
+
+        create note <title>
+        create list <title>
+        """
         line = arg
         if line.startswith('note'):
             title = line[line.startswith('note') and len('note'):].lstrip()
@@ -446,6 +480,9 @@ class GKeep(cmd.Cmd):
             return options_commands
 
     def do_useList(self, arg):
+        """
+        KEEP:Select a list to use, so items can be added, checked or unchecked
+        """
         for n in self.entries:
             if arg == n.title:
                 print()
@@ -463,6 +500,9 @@ class GKeep(cmd.Cmd):
             return self.lists
 
     def do_useNote(self, arg):
+        """
+        KEEP:Select a note to use, so text can be append to current text
+        """
         for n in self.entries:
             if arg == n.title:
                 print()

@@ -2,6 +2,7 @@ import argparse
 import sys
 from .version import __version__
 
+
 class MyParser(argparse.ArgumentParser):
     def error(self, message):
         print('\n****************************************')
