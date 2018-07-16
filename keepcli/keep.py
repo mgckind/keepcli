@@ -4,6 +4,7 @@ import os
 import getpass
 import gkeepapi
 import yaml
+import pickle
 import keepcli.kcliparser as kcliparser
 from keepcli.version import __version__
 
@@ -585,6 +586,14 @@ class GKeep(cmd.Cmd):
             self.do_useList(self.current.title)
         else:
             print('{} is not a List'.format(self.current.title))
+
+    def do_dump(self, arg):
+        """
+        Pickle entries and current status for offline use
+        """
+        pickle.dump(self.keep, open(self.username+'.kci','wb'))
+
+
 
 
     def do_clear(self, line):
