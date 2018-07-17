@@ -17,6 +17,8 @@ def get_args():
         description='keepcli is a interactive command line tool for the unofficial Google Keep API')
     parser.add_argument("-v", "--version", action="store_true",
                         help="print version number and exit")
+    parser.add_argument("-o", "--offline", action="store_true",
+                        help="Run in offline mode (need to dump the data in advance)")
     args = parser.parse_args()
 
     if args.version:

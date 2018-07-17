@@ -111,16 +111,16 @@ def get_color(entry, mode, color_only=False):
 
 class GKeep(cmd.Cmd):
     """ The main cmd class"""
-    def __init__(self, auth_file, conf_file):
+    def __init__(self, auth_file, conf_file, offline=False):
         # super().__init__()
         cmd.Cmd.__init__(self)
+        self.offline = offline
         self.auth_file = auth_file
         self.kcli_path = os.path.dirname(self.auth_file)
         with open(conf_file, 'r') as confile:
             self.conf = yaml.load(confile)
         self.termcolor = 1 if self.conf['termcolor'] else 0
         self.autosync = True if self.conf['autosync'] else False
-        self.offline = True
         if self.offline:
             self.autosync = False
         self.prompt = 'keepcli [] ~> '
@@ -363,6 +363,13 @@ class GKeep(cmd.Cmd):
         elif 'lists' in line:
             lists = True
         print()
+        try:
+            _ = self.entries
+        except AttributeError:
+            if self.offline:
+                print('In offline mode, you need to load data first, use the load command')
+                print()
+                return
         for n in self.entries:
             display = True
             if n.trashed:
@@ -524,6 +531,7 @@ class GKeep(cmd.Cmd):
                 self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
                 self.current_checked = [i.text for i in n.checked]
                 self.current_unchecked = [i.text for i in n.unchecked]
+                self.current_all_items = self.current_checked + self.current_unchecked
 
     def complete_useList(self, text, line, start_index, end_index):
         if text:
@@ -586,6 +594,33 @@ class GKeep(cmd.Cmd):
                            for option in self.current_unchecked if option.startswith(temp)]
                 return options
 
+    def do_deleteItem(self, arg):
+        if self.current is None:
+            print('Not Note or List is selected, use the command: useList or useNote')
+            return
+        if self.current.type.name == 'List':
+            for item in self.current.items:
+                if arg == item.text:
+                    item.delete()
+            self.do_refresh(None)
+            self.do_useList(self.current.title)
+        else:
+            print('{} is not a List'.format(self.current.title))
+
+    def complete_deleteItem(self, text, line, start_index, end_index):
+        if text:
+            temp = line[line.startswith('deleteItem') and len('deleteItem'):].lstrip()
+            temp2 = temp.split()[-1]
+            return [temp2 + option[option.startswith(temp) and len(temp):]
+                    for option in self.current_all_items if option.startswith(temp)]
+        else:
+            temp = line[line.startswith('deleteItem') and len('deleteItem'):].lstrip()
+            if temp == '':
+                return self.current_all_items
+            else:
+                options = [option[len(temp):]
+                           for option in self.current_all_items if option.startswith(temp)]
+                return options
 
     def do_uncheckItem(self, arg):
         if self.current is None:
@@ -603,9 +638,18 @@ class GKeep(cmd.Cmd):
 
     def complete_uncheckItem(self, text, line, start_index, end_index):
         if text:
-            return [option for option in self.current_checked if option.startswith(text)]
+            temp = line[line.startswith('uncheckItem') and len('uncheckItem'):].lstrip()
+            temp2 = temp.split()[-1]
+            return [temp2 + option[option.startswith(temp) and len(temp):]
+                    for option in self.current_checked if option.startswith(temp)]
         else:
-            return self.current_checked
+            temp = line[line.startswith('uncheckItem') and len('uncheckItem'):].lstrip()
+            if temp == '':
+                return self.current_checked
+            else:
+                options = [option[len(temp):]
+                           for option in self.current_checked if option.startswith(temp)]
+                return options
 
     def do_addItem(self, arg):
         if self.current is None:
@@ -617,6 +661,9 @@ class GKeep(cmd.Cmd):
             self.do_useList(self.current.title)
         else:
             print('{} is not a List'.format(self.current.title))
+
+
+
 
     def do_dump(self, arg):
         """
@@ -682,8 +729,9 @@ def cli():
     conf_file = os.path.join(kcli_path, "config.yaml")
     write_conf(conf_file)
     args = kcliparser.get_args()
+    offline = True if args.offline else False
     print('Starting...')
-    GKeep(auth_file=auth_file, conf_file=conf_file).cmdloop()
+    GKeep(auth_file=auth_file, conf_file=conf_file, offline=offline).cmdloop()
 
 if __name__ == '__main__':
     cli()
