@@ -414,7 +414,7 @@ class GKeep(cmd.Cmd):
         if arg == '' and self.current is None:
             self.do_help('show')
             return
-        if self.current is not None:
+        if arg == '' and self.current is not None:
             arg = self.current.title
         for n in self.entries:
             if arg == n.title:
@@ -664,6 +664,11 @@ class GKeep(cmd.Cmd):
             print('{} is not a List'.format(self.current.title))
 
     def do_moveItem(self, arg):
+        """
+        Move items etween lists
+        """
+        destination = None
+        done = False
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
@@ -671,24 +676,34 @@ class GKeep(cmd.Cmd):
         move_args.add_argument('item', action='store', default=None, nargs='+')
         move_args.add_argument('--list', help='Name of the destination list',
                                action='store', default=None)
+
         try:
             args = move_args.parse_args(arg.split())
-            if args.list:
-                new_arg = arg[:arg.index('--list')].rstrip()
-        except Exception as e:
-            print(e)
+        except:
+            self.do_help('moveItem')
             return
+        if args.list is None:
+            print('You need to specify a list to move the item to with --list option')
+            return
+        else:
+            new_arg = arg[:arg.index('--list')].rstrip()
+            for n in self.entries:
+                if args.list == n.title:
+                    destination = n
+            if destination is None:
+                print('List {} does not exist'.format(args.list))
+                self.do_entries('lists')
+                return
         if self.current.type.name == 'List':
             for item in self.current.items:
                 if new_arg == item.text:
+                    destination.add(item.text)
                     item.delete()
-                    pass
-                    print(item.text)
-                    print('to')
-                    print(args.list)
-                    for n in self.entries:
-                        if args.list == n.title:
-                            n.add(item.text)
+                    done = True
+                    break
+            if not done:
+                print('Item {} does not exist in list {}'.format(new_arg, self.current.title))
+                return
             self.do_refresh(None)
             self.do_useList(self.current.title)
         else:
