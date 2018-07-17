@@ -68,7 +68,12 @@ def print_list(List, mode, only_unchecked=False):
     mode : int
            mode to be used by colored to whether (mode=1) or not mode=0) use termcolor
     """
-    times_unchecked = [item.timestamps.created for item in List.unchecked]
+    try:
+        times_unchecked = [item.timestamps.created for item in List.unchecked]
+    except:
+        print('List printing is not supported without sync, please sync your data')
+        return
+
     unchecked = [x for _, x in
                  sorted(zip(times_unchecked, List.unchecked), key=lambda pair: pair[0])]
     times_checked = [item.timestamps.created for item in List.checked]
@@ -145,7 +150,7 @@ class GKeep(cmd.Cmd):
             except gkeepapi.exception.LoginException:
                 print('\nUser/Password not valid (auth file : {})\n'.format(auth_file))
                 sys.exit(1)
-            self.do_refresh(None)
+            self.do_refresh(None, force_sync=True)
         else:
             print('Running Offline')
         self.current = None
@@ -244,13 +249,17 @@ class GKeep(cmd.Cmd):
         """
         self.do_help('shortcuts')
 
-    def do_refresh(self, arg):
+    def do_refresh(self, arg, force_sync=False):
         """
         KEEP:Sync and Refresh content from Google Keep
         """
+        sync = True if self.autosync else False
+        if force_sync:
+            sync = True
         if not self.offline:
-            print('Syncing...')
-            self.keep.sync()
+            if sync:
+                print('Syncing...')
+                self.keep.sync()
         else:
             print('Cannot sync while offline')
         self.entries = self.keep.all()
@@ -268,6 +277,14 @@ class GKeep(cmd.Cmd):
                 if n.type.name == 'Note':
                     self.notes.append(n.title)
                     self.notes_obj.append(n)
+
+
+    def do_sync(self, arg):
+        """
+        KEEP: Sync data with the server, it needs online access
+        """
+        self.do_refresh(None, force_sync=True)
+
 
     def do_whoami(self, arg):
         """
@@ -526,7 +543,6 @@ class GKeep(cmd.Cmd):
         for n in self.entries:
             if arg == n.title:
                 print()
-                #TODO: ask before deletion
                 print('Current List set to: {}'.format(n.title))
                 self.current = n
                 self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
@@ -659,7 +675,8 @@ class GKeep(cmd.Cmd):
         if self.current.type.name == 'List':
             self.current.add(arg.lstrip())
             self.do_refresh(None)
-            self.do_useList(self.current.title)
+            if self.autosync:
+                self.do_useList(self.current.title)
         else:
             print('{} is not a List'.format(self.current.title))
 
