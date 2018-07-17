@@ -2,9 +2,10 @@ import cmd
 import sys
 import os
 import getpass
+import pickle
+import argparse
 import gkeepapi
 import yaml
-import pickle
 import keepcli.kcliparser as kcliparser
 from keepcli.version import __version__
 
@@ -662,8 +663,51 @@ class GKeep(cmd.Cmd):
         else:
             print('{} is not a List'.format(self.current.title))
 
+    def do_moveItem(self, arg):
+        if self.current is None:
+            print('Not Note or List is selected, use the command: useList or useNote')
+            return
+        move_args = argparse.ArgumentParser(prog='', usage='', add_help=False)
+        move_args.add_argument('item', action='store', default=None, nargs='+')
+        move_args.add_argument('--list', help='Name of the destination list',
+                               action='store', default=None)
+        try:
+            args = move_args.parse_args(arg.split())
+            if args.list:
+                new_arg = arg[:arg.index('--list')].rstrip()
+        except Exception as e:
+            print(e)
+            return
+        if self.current.type.name == 'List':
+            for item in self.current.items:
+                if new_arg == item.text:
+                    item.delete()
+                    pass
+                    print(item.text)
+                    print('to')
+                    print(args.list)
+                    for n in self.entries:
+                        if args.list == n.title:
+                            n.add(item.text)
+            self.do_refresh(None)
+            self.do_useList(self.current.title)
+        else:
+            print('{} is not a List'.format(self.current.title))
 
-
+    def complete_moveItem(self, text, line, start_index, end_index):
+        if text:
+            temp = line[line.startswith('moveItem') and len('moveItem'):].lstrip()
+            temp2 = temp.split()[-1]
+            return [temp2 + option[option.startswith(temp) and len(temp):]
+                    for option in self.current_unchecked if option.startswith(temp)]
+        else:
+            temp = line[line.startswith('moveItem') and len('moveItem'):].lstrip()
+            if temp == '':
+                return self.current_unchecked
+            else:
+                options = [option[len(temp):]
+                           for option in self.current_unchecked if option.startswith(temp)]
+                return options
 
     def do_dump(self, arg):
         """
