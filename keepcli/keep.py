@@ -56,7 +56,7 @@ options_current = ['show', 'color']
 options_config = ['set']
 
 
-def print_list(List, mode):
+def print_list(List, mode, only_unchecked=False):
     """
     Prints out checked followed by unchecked items from a list sorted by time of creation
 
@@ -75,6 +75,8 @@ def print_list(List, mode):
     print('Unchecked items: {} out of {}'.format(len(unchecked), len(checked)+len(unchecked)))
     for i in unchecked:
         print(colored(i, "red", mode))
+    if only_unchecked:
+        return
     for i in checked:
         print(colored(i, "green", mode))
 
@@ -112,31 +114,40 @@ class GKeep(cmd.Cmd):
     def __init__(self, auth_file, conf_file):
         # super().__init__()
         cmd.Cmd.__init__(self)
-        print('Logging in...')
-        self.prompt = 'keepcli [] ~> '
-        self.keep = gkeepapi.Keep()
-        try:
-            with open(auth_file, 'r') as auth:
-                conn = yaml.load(auth)
-        except FileNotFoundError:
-            conn = {}
-            print('\nAuth file {} not found, will create one... '
-                  '(Google App password is strongly recommended)\n'.format(auth_file))
-            conn['user'] = input('Enter username : ')
-            conn['passwd'] = getpass.getpass(prompt='Enter password : ')
-        try:
-            self.connect = self.keep.login(conn['user'], conn['passwd'])
-            with open(auth_file, 'w') as auth:
-                yaml.dump(conn, auth, default_flow_style=False)
-            self.username = conn['user']
-        except gkeepapi.exception.LoginException:
-            print('\nUser/Password not valid (auth file : {})\n'.format(auth_file))
-            sys.exit(1)
-        self.current = None
+        self.auth_file = auth_file
+        self.kcli_path = os.path.dirname(self.auth_file)
         with open(conf_file, 'r') as confile:
             self.conf = yaml.load(confile)
         self.termcolor = 1 if self.conf['termcolor'] else 0
-        self.do_refresh(None)
+        self.autosync = True if self.conf['autosync'] else False
+        self.offline = True
+        if self.offline:
+            self.autosync = False
+        self.prompt = 'keepcli [] ~> '
+        self.keep = gkeepapi.Keep()
+        if not self.offline:
+            print('Logging in...')
+            try:
+                with open(auth_file, 'r') as auth:
+                    conn = yaml.load(auth)
+            except FileNotFoundError:
+                conn = {}
+                print('\nAuth file {} not found, will create one... '
+                      '(Google App password is strongly recommended)\n'.format(auth_file))
+                conn['user'] = input('Enter username : ')
+                conn['passwd'] = getpass.getpass(prompt='Enter password : ')
+            try:
+                self.connect = self.keep.login(conn['user'], conn['passwd'])
+                with open(auth_file, 'w') as auth:
+                    yaml.dump(conn, auth, default_flow_style=False)
+                self.username = conn['user']
+            except gkeepapi.exception.LoginException:
+                print('\nUser/Password not valid (auth file : {})\n'.format(auth_file))
+                sys.exit(1)
+            self.do_refresh(None)
+        else:
+            print('Running Offline')
+        self.current = None
         self.complete_ul = self.complete_useList
         self.complete_un = self.complete_useNote
         self.doc_header = colored(
@@ -199,10 +210,6 @@ class GKeep(cmd.Cmd):
             self.print_topics(self.keep_header, cmds_keep, 80)
             self.print_topics(self.doc_header, cmds_doc, 80)
             # self.print_topics('Misc', list(help.keys()), 80)
-            # self.print_topics('Undo', cmds_undoc, 80)
-
-            # print(colored(' *Default Input*', 'cyan', self.termcolor))
-            # print(self.ruler * 80)
             print()
 
     def print_topics(self, header, cmds, maxcol):
@@ -228,19 +235,23 @@ class GKeep(cmd.Cmd):
         """
         KEEP:Undocumented shortcuts used in keepcli.
 
-        ul: useList --> select a list
-        un: useNote --> select a note
-        ai: addItem --> add item to a current List
-        cs: current show --> shows current List/Note
+        ul: useList              --> select a list
+        un: useNote              --> select a note
+        ai: addItem              --> add item to a current List
+        cs: current show         --> shows current List/Note
+        el: entries list --show  --> show all unchecked items from all active lists
         """
         self.do_help('shortcuts')
 
     def do_refresh(self, arg):
         """
-        KEEP:Sync and Refresh content
+        KEEP:Sync and Refresh content from Google Keep
         """
-        print('Syncing...')
-        self.keep.sync()
+        if not self.offline:
+            print('Syncing...')
+            self.keep.sync()
+        else:
+            print('Cannot sync while offline')
         self.entries = self.keep.all()
         self.titles = []
         self.lists = []
@@ -280,6 +291,9 @@ class GKeep(cmd.Cmd):
 
     def do_un(self, arg):
         self.do_useNote(arg)
+
+    def do_el(self, arg):
+        self.do_entries('lists --show')
 
     def do_exit(self, arg):
         """
@@ -324,12 +338,21 @@ class GKeep(cmd.Cmd):
 
         Usage:
 
-        entries all: Included archived and deleted items
-        entries lists: Show only lists
-        entries notes: Show only note
+        entries all:
+            Included archived and deleted items
+        entries lists:
+            Show only lists
+        entries notes:
+            Show only note
+
+        Options:
+
+        --show:
+            Shows all unchecked items for all Active lists
         """
 
         line = "".join(arg.split())
+        show = True if '--show' in line else False
         active = True
         notes = False
         lists = False
@@ -360,6 +383,10 @@ class GKeep(cmd.Cmd):
                         'type': n.type.name}
             if display:
                 print('{title: <30} {status: <10}  [ {type} ]'.format(**data))
+            if show and lists and n.type.name == 'List':
+                self.do_clear(None)
+                print_list(n, self.termcolor, only_unchecked=True)
+                print()
         print()
 
     def complete_entries(self, text, line, start_index, end_index):
@@ -371,6 +398,10 @@ class GKeep(cmd.Cmd):
     def do_show(self, arg):
         """
         KEEP:Print content os List/Note
+
+        Usage:
+
+        show <name of list/note>
         """
         if arg == '' and self.current is None:
             self.do_help('show')
@@ -399,11 +430,11 @@ class GKeep(cmd.Cmd):
 
     def do_delete(self, arg):
         """
-        KEEP:Delete entry based on its name. Works for lists and notes_obj
+        KEEP:Delete entry based on its name. Works for lists and notes
 
         Usage:
 
-        delete <item>
+        delete <name of list/note>
         """
         for n in self.entries:
             if arg == n.title:
@@ -591,8 +622,18 @@ class GKeep(cmd.Cmd):
         """
         Pickle entries and current status for offline use
         """
-        pickle.dump(self.keep, open(self.username+'.kci','wb'))
+        pickle.dump(self.keep, open(os.path.join(self.kcli_path, self.username+'.kci'), 'wb'))
 
+
+    def do_load(self, arg):
+        """
+        Load entries from a previously saved pickle. For offline use
+        """
+        with open(self.auth_file, 'r') as auth:
+            conn = yaml.load(auth)
+        self.username = conn['user']
+        self.keep = pickle.load(open(os.path.join(self.kcli_path, self.username+'.kci'), 'rb'))
+        self.do_refresh(None)
 
 
 
