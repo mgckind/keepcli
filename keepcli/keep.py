@@ -815,6 +815,10 @@ def write_conf(conf_file):
 
 
 def cli():
+    online = True if os.system("ping -c 1 " + 'google.com' + '> /dev/null 2>&1') is 0 else False
+    if not online:
+        print('You are offline, use the --offline option (and load your previously dumped data)')
+        return
     kcli_path = os.path.join(os.environ["HOME"], ".keepcli/")
     if not os.path.exists(kcli_path):
         os.makedirs(kcli_path)
