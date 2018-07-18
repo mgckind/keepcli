@@ -347,7 +347,7 @@ class GKeep(cmd.Cmd):
             else:
                 print('format key = value')
                 return
-            value_b = True if value in true_options else False
+            value_b = True if value.lower() in true_options else False
             if key in self.conf:
                 self.conf[key] = value_b
                 with open(self.conf_file, 'w') as conf:
@@ -476,10 +476,14 @@ class GKeep(cmd.Cmd):
         for n in self.entries:
             if arg == n.title:
                 print()
-                #TODO: ask before deletion
-                print('{} Deleted'.format(n.title))
-                n.delete()
-                self.do_refresh(None)
+                question = 'Are you sure you want to delete {} ?. '.format(n.title)
+                question += 'This is irreversible [spell out yes]: '
+                question = colored(question, 'red', self.termcolor)
+                if (input(question).lower() in ['yes']):
+                    print('{} Deleted'.format(n.title))
+                    n.delete()
+                    self.do_refresh(None)
+                print()
 
     def complete_delete(self, text, line, start_index, end_index):
         if text:
@@ -630,7 +634,11 @@ class GKeep(cmd.Cmd):
         if self.current.type.name == 'List':
             for item in self.current.items:
                 if arg == item.text:
-                    item.delete()
+                    question = 'Are you sure you want to delete {} ?. '.format(arg)
+                    question += 'This is irreversible [spell out yes]: '
+                    question = colored(question, 'red', self.termcolor)
+                    if (input(question).lower() in ['yes']):
+                        item.delete()
             self.do_refresh(None)
             self.do_useList(self.current.title)
         else:
