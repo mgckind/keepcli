@@ -4,6 +4,7 @@ import os
 import getpass
 import pickle
 import argparse
+import types
 import gkeepapi
 import yaml
 import keepcli.kcliparser as kcliparser
@@ -55,6 +56,8 @@ options_entries = ['all', 'notes', 'lists']
 options_commands = ['note', 'list']
 options_current = ['show', 'color']
 options_config = ['set']
+
+true_options = ['true', 'yes', '1', 'y', 't']
 
 
 def print_list(List, mode, only_unchecked=False):
@@ -122,11 +125,9 @@ class GKeep(cmd.Cmd):
         cmd.Cmd.__init__(self)
         self.offline = offline
         self.auth_file = auth_file
+        self.conf_file = conf_file
+        self.update_config()
         self.kcli_path = os.path.dirname(self.auth_file)
-        with open(conf_file, 'r') as confile:
-            self.conf = yaml.load(confile)
-        self.termcolor = 1 if self.conf['termcolor'] else 0
-        self.autosync = True if self.conf['autosync'] else False
         if self.offline:
             self.autosync = False
         self.prompt = 'keepcli [] ~> '
@@ -160,6 +161,13 @@ class GKeep(cmd.Cmd):
                           ' *Other Commands*', "cyan", self.termcolor) + ' (type help <command>):'
         self.keep_header = colored(
                           ' *Keep Commands*', "cyan", self.termcolor) + ' (type help <command>):'
+    def update_config(self):
+        """ Update config parameters based on config file """
+        with open(self.conf_file, 'r') as confile:
+            self.conf = yaml.load(confile)
+        self.termcolor = 1 if self.conf['termcolor'] else 0
+        self.autosync = True if self.conf['autosync'] else False
+
 
     def do_help(self, arg):
         """
@@ -339,9 +347,13 @@ class GKeep(cmd.Cmd):
             else:
                 print('format key = value')
                 return
-            try:
-                print(self.conf[key])
-            except KeyError:
+            value_b = True if value in true_options else False
+            if key in self.conf:
+                self.conf[key] = value_b
+                with open(self.conf_file, 'w') as conf:
+                    yaml.dump(self.conf, conf, default_flow_style=False)
+                self.update_config()
+            else:
                 print('{} is not a valid configuration option'.format(key))
 
     def complete_config(self, text, line, start_index, end_index):
