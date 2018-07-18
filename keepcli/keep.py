@@ -4,7 +4,6 @@ import os
 import getpass
 import pickle
 import argparse
-import types
 import gkeepapi
 import yaml
 import keepcli.kcliparser as kcliparser
@@ -161,13 +160,13 @@ class GKeep(cmd.Cmd):
                           ' *Other Commands*', "cyan", self.termcolor) + ' (type help <command>):'
         self.keep_header = colored(
                           ' *Keep Commands*', "cyan", self.termcolor) + ' (type help <command>):'
+
     def update_config(self):
         """ Update config parameters based on config file """
         with open(self.conf_file, 'r') as confile:
             self.conf = yaml.load(confile)
         self.termcolor = 1 if self.conf['termcolor'] else 0
         self.autosync = True if self.conf['autosync'] else False
-
 
     def do_help(self, arg):
         """
@@ -242,12 +241,15 @@ class GKeep(cmd.Cmd):
     def do_version(self, arg):
         """
         Print current keepcli version
+
+        Usage:
+            ~> version
         """
         print('\nCurrent version: {}'.format(__version__))
 
     def do_shortcuts(self, arg):
         """
-        KEEP:Undocumented shortcuts used in keepcli.
+        :Undocumented shortcuts used in keepcli.
 
         ul: useList              --> select a list
         un: useNote              --> select a note
@@ -259,7 +261,10 @@ class GKeep(cmd.Cmd):
 
     def do_refresh(self, arg, force_sync=False):
         """
-        KEEP:Sync and Refresh content from Google Keep
+        Sync and Refresh content from Google Keep
+
+        Usage:
+            ~> refresh
         """
         sync = True if self.autosync else False
         if force_sync:
@@ -286,17 +291,21 @@ class GKeep(cmd.Cmd):
                     self.notes.append(n.title)
                     self.notes_obj.append(n)
 
-
     def do_sync(self, arg):
         """
-        KEEP: Sync data with the server, it needs online access
+        Sync data with the server, it needs online access
+
+        Usage:
+            ~> sync
         """
         self.do_refresh(None, force_sync=True)
-
 
     def do_whoami(self, arg):
         """
         Print information about user
+
+        Usage:
+            ~> whoami
         """
         print()
         print('User    : {}'.format(self.username))
@@ -329,7 +338,13 @@ class GKeep(cmd.Cmd):
 
     def do_config(self, arg):
         """
-        Print configuration options
+        Print and set configuration options
+
+        Usage:
+            ~> config                       : shows current configuration
+            ~> config set <key>=<value>     : sets <key> to <value> and updates config file
+        Ex:
+            ~> config set termcolor=true    : sets termcolor to true
         """
         line = "".join(arg.split())
         if arg == '':
@@ -364,23 +379,23 @@ class GKeep(cmd.Cmd):
 
     def do_entries(self, arg):
         """
-        KEEP:Show  all lists and notes for the user
+        KEEP:Shows  all lists and notes for the user
 
         Usage:
+            ~> entries all   : Included archived and deleted items
+            ~> entries lists : Shows only lists
+            ~> entries notes : Shows only notes
 
-        entries all:
-            Included archived and deleted items
-        entries lists:
-            Show only lists
-        entries notes:
-            Show only note
+        Optional Arguments:
+            --show           : Shows all unchecked items for all Active lists
 
-        Options:
+        Ex:
+            ~> entries lists --show
 
-        --show:
-            Shows all unchecked items for all Active lists
+        Note:
+            Use shortcut el to replace entries lists --show
+            ~> el
         """
-
         line = "".join(arg.split())
         show = True if '--show' in line else False
         active = True
@@ -437,8 +452,7 @@ class GKeep(cmd.Cmd):
         KEEP:Print content os List/Note
 
         Usage:
-
-        show <name of list/note>
+            ~> show <name of list/note>
         """
         if arg == '' and self.current is None:
             self.do_help('show')
@@ -470,8 +484,7 @@ class GKeep(cmd.Cmd):
         KEEP:Delete entry based on its name. Works for lists and notes
 
         Usage:
-
-        delete <name of list/note>
+            ~> delete <name of list/note>
         """
         for n in self.entries:
             if arg == n.title:
@@ -491,11 +504,18 @@ class GKeep(cmd.Cmd):
         else:
             return self.titles
 
-
-
     def do_current(self, arg):
         """
-        KEEP:Show current list or note being used
+        KEEP:Show current list or note being used i
+
+        Usage:
+            ~> current                : Prints current note/list
+            ~> current show           : Prints content of current note/list
+            ~> current color <color>  : Change color card of entry
+
+        Note:
+            Use shortcut cs to current show
+            ~> cs
         """
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
@@ -511,7 +531,6 @@ class GKeep(cmd.Cmd):
             except:
                 print('Color {} do not exist'.format(color))
 
-
     def complete_current(self, text, line, start_index, end_index):
         if 'color' in line:
             if text:
@@ -524,15 +543,13 @@ class GKeep(cmd.Cmd):
             else:
                 return options_current
 
-
     def do_create(self, arg):
         """
         KEEP:Create a note or a list
 
         Usage:
-
-        create note <title>
-        create list <title>
+            ~> create note <title>
+            ~> create list <title>
         """
         line = arg
         if line.startswith('note'):
@@ -555,6 +572,13 @@ class GKeep(cmd.Cmd):
     def do_useList(self, arg):
         """
         KEEP:Select a list to use, so items can be added, checked or unchecked
+
+        Usage:
+            ~> useList <title>
+
+        Note:
+            Use shortcut ul to select current list
+            ~> ul <title>
         """
         for n in self.entries:
             if arg == n.title:
@@ -575,6 +599,13 @@ class GKeep(cmd.Cmd):
     def do_useNote(self, arg):
         """
         KEEP:Select a note to use, so text can be append to current text
+
+        Usage:
+            ~> useNote <title>
+
+        Note:
+            Use shortcut un to select current note
+            ~> un <title>
         """
         for n in self.entries:
             if arg == n.title:
@@ -590,6 +621,12 @@ class GKeep(cmd.Cmd):
             return self.notes
 
     def do_addText(self, arg):
+        """
+        KEEP:Add text to the current note
+
+        Usage:
+            ~> addText <This is my example text>
+        """
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
@@ -600,6 +637,12 @@ class GKeep(cmd.Cmd):
             print('{} is not a Note'.format(self.current.title))
 
     def do_checkItem(self, arg):
+        """
+        KEEP:Mark an item as completed in a current list
+
+        Usage:
+            ~> checkItem <item in current list>
+        """
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
@@ -628,6 +671,12 @@ class GKeep(cmd.Cmd):
                 return options
 
     def do_deleteItem(self, arg):
+        """
+        KEEP:Delete an item from a list (checked or unchecked)
+
+        Usage:
+            ~> deleteItem <item in current list>
+        """
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
@@ -660,6 +709,12 @@ class GKeep(cmd.Cmd):
                 return options
 
     def do_uncheckItem(self, arg):
+        """
+        KEEP:Mark an item as unchecked in a current list
+
+        Usage:
+            ~> uncheckItem <item in current list>
+        """
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
@@ -671,7 +726,6 @@ class GKeep(cmd.Cmd):
             self.do_useList(self.current.title)
         else:
             print('{} is not a List'.format(self.current.title))
-
 
     def complete_uncheckItem(self, text, line, start_index, end_index):
         if text:
@@ -689,6 +743,19 @@ class GKeep(cmd.Cmd):
                 return options
 
     def do_addItem(self, arg):
+        """
+        KEEP: Add a new item to current lists
+
+        Usage:
+            ~> addItem <item>
+
+        Ex:
+            ~> addItem get milk
+
+        Note:
+            You can also use the shortcut ai:
+            ~> ai <item>
+        """
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
@@ -702,7 +769,10 @@ class GKeep(cmd.Cmd):
 
     def do_moveItem(self, arg):
         """
-        Move items etween lists
+        KEEP:Move items from current list to another
+
+        Usage:
+            ~> moveItem <item> --list <destination_list>
         """
         destination = None
         done = False
@@ -764,21 +834,24 @@ class GKeep(cmd.Cmd):
     def do_dump(self, arg):
         """
         Pickle entries and current status for offline use
+
+        Usage:
+            ~> dump
         """
         pickle.dump(self.keep, open(os.path.join(self.kcli_path, self.username+'.kci'), 'wb'))
-
 
     def do_load(self, arg):
         """
         Load entries from a previously saved pickle. For offline use
+
+        Usage:
+            ~> load
         """
         with open(self.auth_file, 'r') as auth:
             conn = yaml.load(auth)
         self.username = conn['user']
         self.keep = pickle.load(open(os.path.join(self.kcli_path, self.username+'.kci'), 'rb'))
         self.do_refresh(None)
-
-
 
     def do_clear(self, line):
         """
@@ -815,6 +888,7 @@ def write_conf(conf_file):
 
 
 def cli():
+    """ Main command line interface function"""
     online = True if os.system("ping -c 1 " + 'google.com' + '> /dev/null 2>&1') is 0 else False
     if not online:
         print('You are offline, use the --offline option (and load your previously dumped data)')
@@ -830,8 +904,9 @@ def cli():
     write_conf(conf_file)
     args = kcliparser.get_args()
     offline = True if args.offline else False
-    print('Starting...')
+    print()
     GKeep(auth_file=auth_file, conf_file=conf_file, offline=offline).cmdloop()
+
 
 if __name__ == '__main__':
     cli()
