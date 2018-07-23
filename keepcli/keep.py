@@ -50,12 +50,10 @@ colorsGK = {
     'yellow': gkeepapi.node.ColorValue.Yellow,
 }
 
-
 options_entries = ['all', 'notes', 'lists']
 options_commands = ['note', 'list']
 options_current = ['show', 'color', 'pin', 'unpin']
 options_config = ['set']
-
 true_options = ['true', 'yes', '1', 'y', 't']
 
 
@@ -132,7 +130,7 @@ class GKeep(cmd.Cmd):
         self.prompt = 'keepcli [] ~> '
         self.keep = gkeepapi.Keep()
         if not self.offline:
-            print('Logging in...')
+            print('\nLogging in...\n')
             try:
                 with open(auth_file, 'r') as auth:
                     conn = yaml.load(auth)
@@ -155,7 +153,7 @@ class GKeep(cmd.Cmd):
                 sys.exit(1)
             self.do_refresh(None, force_sync=True)
         else:
-            print('Running Offline')
+            print(colored('\nRunning Offline\n', "red", self.termcolor))
         self.current = None
         self.complete_ul = self.complete_useList
         self.complete_un = self.complete_useNote
@@ -165,7 +163,7 @@ class GKeep(cmd.Cmd):
                           ' *Keep Commands*', "cyan", self.termcolor) + ' (type help <command>):'
 
     def update_config(self):
-        """ Update config parameters based on config file """
+        """ Update config parameters into current session"""
         with open(self.conf_file, 'r') as confile:
             self.conf = yaml.load(confile)
         self.termcolor = 1 if self.conf['termcolor'] else 0
@@ -174,6 +172,9 @@ class GKeep(cmd.Cmd):
     def do_help(self, arg):
         """
         List available commands with "help" or detailed help with "help cmd".
+
+        Usage:
+            ~> help <command>
         """
         if arg:
             try:
@@ -238,7 +239,7 @@ class GKeep(cmd.Cmd):
                 self.stdout.write("\n")
 
     def emptyline(self):
-        """ Do nothing when there is no input """
+        """Do nothing when there is no input """
         pass
 
     def do_version(self, arg):
@@ -252,11 +253,12 @@ class GKeep(cmd.Cmd):
 
     def do_shortcuts(self, arg):
         """
-        :Undocumented shortcuts used in keepcli.
+        Undocumented shortcuts used in keepcli.
 
         ul: useList              --> select a list
         un: useNote              --> select a note
         ai: addItem              --> add item to a current List
+        ai: addText              --> add text to a current Note
         cs: current show         --> shows current List/Note
         el: entries list --show  --> show all unchecked items from all active lists
         """
@@ -277,7 +279,7 @@ class GKeep(cmd.Cmd):
                 print('Syncing...')
                 self.keep.sync()
         else:
-            print('Cannot sync while offline')
+            print(colored('Cannot sync while offline', 'red', self.termcolor))
         self.entries = self.keep.all()
         self.titles = []
         self.lists = []
@@ -323,6 +325,9 @@ class GKeep(cmd.Cmd):
 
     def do_ai(self, arg):
         self.do_addItem(arg)
+
+    def do_at(self, arg):
+        self.do_addText(arg)
 
     def do_ul(self, arg):
         self.do_useList(arg)
@@ -437,12 +442,7 @@ class GKeep(cmd.Cmd):
                     display = False
                 if lists and n.type.name == 'Note':
                     display = False
-            try:
-                data = {'title': colored(n.title, colors[n.color.name.lower()], self.termcolor), 'status': status,
-                        'type': n.type.name}
-            except KeyError:
-                data = {'title': colored(n.title, 'white', self.termcolor), 'status': status,
-                        'type': n.type.name}
+            data = {'title': get_color(n, self.termcolor), 'status': status, 'type': n.type.name}
             if display:
                 print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
             if show and lists and n.type.name == 'List':
@@ -543,7 +543,7 @@ class GKeep(cmd.Cmd):
 
     def do_current(self, arg):
         """
-        KEEP:Show current list or note being used i
+        KEEP:Show current list or note being used
 
         Usage:
             ~> current                : Prints current note/list
@@ -723,7 +723,8 @@ class GKeep(cmd.Cmd):
             ~> deleteItem <item in current list>
         """
         if self.current is None:
-            print('Not Note or List is selected, use the command: useList or useNote')
+            print(colored('Not Note or List is selected, use the command: useList or useNote',
+                          'red', self.termcolor))
             return
         if self.current.type.name == 'List':
             for item in self.current.items:
@@ -901,6 +902,9 @@ class GKeep(cmd.Cmd):
     def do_clear(self, line):
         """
         Clears the screen.
+
+        Usage:
+            ~> clean
         """
         sys.stdout.flush()
         if line is None:
@@ -916,7 +920,7 @@ class GKeep(cmd.Cmd):
 
 def write_conf(conf_file):
     defaults = {
-                'termcolor': False,
+                'termcolor': True,
                 'autosync': True,
                }
     if not os.path.exists(conf_file):
@@ -949,7 +953,7 @@ def cli():
     write_conf(conf_file)
     args = kcliparser.get_args()
     offline = True if args.offline else False
-    print()
+    print('\nWelcome to keepcli, use help or ? to list possible commands.\n\n')
     GKeep(auth_file=auth_file, conf_file=conf_file, offline=offline).cmdloop()
 
 
