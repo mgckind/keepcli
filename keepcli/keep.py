@@ -418,7 +418,14 @@ class GKeep(cmd.Cmd):
                 print('In offline mode, you need to load data first, use the load command')
                 print()
                 return
+        pinned = []
+        unpinned = []
         for n in self.entries:
+            pinned.append(n) if n.pinned else unpinned.append(n)
+
+        if len(pinned) > 0:
+            print('* Pinned entries *: \n')
+        for n in pinned:
             display = True
             if n.trashed:
                 status = 'Deleted'
@@ -437,7 +444,34 @@ class GKeep(cmd.Cmd):
                 data = {'title': colored(n.title, 'white', self.termcolor), 'status': status,
                         'type': n.type.name}
             if display:
-                print('{title: <30} {status: <10}  [ {type} ]'.format(**data))
+                print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
+            if show and lists and n.type.name == 'List':
+                self.do_clear(None)
+                print_list(n, self.termcolor, only_unchecked=True)
+                print()
+        print()
+        if len(unpinned) > 0:
+            print('* Unpinned entries *: \n')
+        for n in unpinned:
+            display = True
+            if n.trashed:
+                status = 'Deleted'
+                if active or notes or lists:
+                    display = False
+            else:
+                status = 'Active'
+                if notes and n.type.name == 'List':
+                    display = False
+                if lists and n.type.name == 'Note':
+                    display = False
+            try:
+                data = {'title': colored(n.title, colors[n.color.name.lower()], self.termcolor), 'status': status,
+                        'type': n.type.name}
+            except KeyError:
+                data = {'title': colored(n.title, 'white', self.termcolor), 'status': status,
+                        'type': n.type.name}
+            if display:
+                print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
             if show and lists and n.type.name == 'List':
                 self.do_clear(None)
                 print_list(n, self.termcolor, only_unchecked=True)
