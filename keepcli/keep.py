@@ -147,8 +147,11 @@ class GKeep(cmd.Cmd):
                 with open(auth_file, 'w') as auth:
                     yaml.dump(conn, auth, default_flow_style=False)
                 self.username = conn['user']
-            except gkeepapi.exception.LoginException:
-                print('\nUser/Password not valid (auth file : {})\n'.format(auth_file))
+            except (gkeepapi.exception.LoginException, ValueError) as e:
+                if e.__class__.__name__ == 'ValueError':
+                    print("\n Can't login and sync from empty content, please create a note online")
+                else:
+                    print('\nUser/Password not valid (auth file : {})\n'.format(auth_file))
                 sys.exit(1)
             self.do_refresh(None, force_sync=True)
         else:
