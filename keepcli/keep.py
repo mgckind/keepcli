@@ -53,7 +53,7 @@ colorsGK = {
 
 options_entries = ['all', 'notes', 'lists']
 options_commands = ['note', 'list']
-options_current = ['show', 'color']
+options_current = ['show', 'color', 'pin', 'unpin']
 options_config = ['set']
 
 true_options = ['true', 'yes', '1', 'y', 't']
@@ -515,6 +515,8 @@ class GKeep(cmd.Cmd):
             ~> current                : Prints current note/list
             ~> current show           : Prints content of current note/list
             ~> current color <color>  : Change color card of entry
+            ~> current pin            : Pin current note/list
+            ~> current unpin          : Unpin current note/list
 
         Note:
             Use shortcut cs to current show
@@ -526,6 +528,12 @@ class GKeep(cmd.Cmd):
         print('Current entry: {}'.format(get_color(self.current, self.termcolor)))
         if 'show' in arg:
             self.do_show(self.current.title)
+        if 'pin' in arg:
+            self.current.pinned = True
+            self.do_refresh(None)
+        if 'unpin' in arg:
+            self.current.pinned = False
+            self.do_refresh(None)
         if 'color' in arg:
             color = arg[arg.startswith('color') and len('color'):].lstrip()
             try:
