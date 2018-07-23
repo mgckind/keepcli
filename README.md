@@ -18,7 +18,13 @@ Some offline features have not tested in too much detail and there might be some
 
 ## Installation
 
+For development version:
+
     pip install git+https://github.com/mgckind/keepcli.git
+
+or latest version:
+
+    pip install keepcli
 
 Its better to set up the App Password for Keep [here](https://myaccount.google.com/apppasswords) to authenticate.
 
