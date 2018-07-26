@@ -131,7 +131,6 @@ class GKeep(cmd.Cmd):
         self.prompt = 'keepcli [] ~> '
         self.keep = gkeepapi.Keep()
         if not self.offline:
-            print('\nLogging in...\n')
             try:
                 with open(auth_file, 'r') as auth:
                     conn = yaml.load(auth)
@@ -141,6 +140,7 @@ class GKeep(cmd.Cmd):
                       '(Google App password is strongly recommended)\n'.format(auth_file))
                 conn['user'] = input('Enter username : ')
                 conn['passwd'] = getpass.getpass(prompt='Enter password : ')
+            print('\nLogging {} in...\n'.format(colored(conn['user'], 'green', self.termcolor)))
             try:
                 self.connect = self.keep.login(conn['user'], conn['passwd'])
                 with open(auth_file, 'w') as auth:
@@ -315,10 +315,10 @@ class GKeep(cmd.Cmd):
             ~> whoami
         """
         print()
-        print('User    : {}'.format(self.username))
-        print('Entries : {} Notes and {} Lists'.format(len(self.notes), len(self.lists)))
         allitem = sum([len(n.items) for n in self.lists_obj])
         uncheck = sum([len(n.unchecked) for n in self.lists_obj])
+        print('User         : {}'.format(self.username))
+        print('Entries      : {} Notes and {} Lists'.format(len(self.notes), len(self.lists)))
         print('Uncheck Items: {} out of {}'.format(uncheck, allitem))
         print()
 
