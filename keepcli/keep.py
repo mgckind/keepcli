@@ -834,7 +834,7 @@ class GKeep(cmd.Cmd):
         move_args = argparse.ArgumentParser(prog='', usage='', add_help=False)
         move_args.add_argument('item', action='store', default=None, nargs='+')
         move_args.add_argument('--list', help='Name of the destination list',
-                               action='store', default=None)
+                               action='store', default=None, nargs='+')
 
         try:
             args = move_args.parse_args(arg.split())
@@ -846,8 +846,9 @@ class GKeep(cmd.Cmd):
             return
         else:
             new_arg = arg[:arg.index('--list')].rstrip()
+            new_dest = arg[arg.index('--list')+6:].lstrip()
             for n in self.entries:
-                if args.list == n.title:
+                if new_dest == n.title:
                     destination = n
             if destination is None:
                 print('List {} does not exist'.format(args.list))
@@ -870,11 +871,15 @@ class GKeep(cmd.Cmd):
 
     def complete_moveItem(self, text, line, start_index, end_index):
         if text:
+            if '--list' in line:
+                return [option for option in self.lists if option.startswith(text)]
             temp = line[line.startswith('moveItem') and len('moveItem'):].lstrip()
             temp2 = temp.split()[-1]
             return [temp2 + option[option.startswith(temp) and len(temp):]
                     for option in self.current_unchecked if option.startswith(temp)]
         else:
+            if '--list' in line:
+                return self.lists
             temp = line[line.startswith('moveItem') and len('moveItem'):].lstrip()
             if temp == '':
                 return self.current_unchecked
