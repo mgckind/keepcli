@@ -123,6 +123,7 @@ class GKeep(cmd.Cmd):
         self.offline = offline
         self.auth_file = auth_file
         self.conf_file = conf_file
+        self.current = None
         self.update_config()
         self.kcli_path = os.path.dirname(self.auth_file)
         if self.offline:
@@ -154,9 +155,10 @@ class GKeep(cmd.Cmd):
             self.do_refresh(None, force_sync=True)
         else:
             print(colored('\nRunning Offline\n', "red", self.termcolor))
-        self.current = None
         self.complete_ul = self.complete_useList
         self.complete_un = self.complete_useNote
+        self.do_useNote(self.conf['current'])
+        self.do_useList(self.conf['current'])
         self.doc_header = colored(
                           ' *Other Commands*', "cyan", self.termcolor) + ' (type help <command>):'
         self.keep_header = colored(
@@ -342,6 +344,8 @@ class GKeep(cmd.Cmd):
         """
         Exit the program
         """
+        with open(self.conf_file, 'w') as conf:
+            yaml.dump(self.conf, conf, default_flow_style=False)
         return True
 
     def do_config(self, arg):
@@ -626,10 +630,11 @@ class GKeep(cmd.Cmd):
             ~> ul <title>
         """
         for n in self.entries:
-            if arg == n.title:
+            if arg == n.title and arg in self.lists:
                 print()
                 print('Current List set to: {}'.format(n.title))
                 self.current = n
+                self.conf['current'] = n.title
                 self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
                 self.current_checked = [i.text for i in n.checked]
                 self.current_unchecked = [i.text for i in n.unchecked]
@@ -653,11 +658,12 @@ class GKeep(cmd.Cmd):
             ~> un <title>
         """
         for n in self.entries:
-            if arg == n.title:
+            if arg == n.title and arg in self.notes:
                 print()
                 print('Current Note set to: {}'.format(n.title))
                 self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
                 self.current = n
+                self.conf['current'] = n.title
 
     def complete_useNote(self, text, line, start_index, end_index):
         if text:
@@ -922,6 +928,7 @@ def write_conf(conf_file):
     defaults = {
                 'termcolor': True,
                 'autosync': True,
+                'current': '',
                }
     if not os.path.exists(conf_file):
         with open(conf_file, 'w') as conf:
