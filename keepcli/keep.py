@@ -530,7 +530,7 @@ class GKeep(cmd.Cmd):
         for n in self.entries:
             if arg == n.title:
                 print()
-                question = 'Are you sure you want to delete {} ?. '.format(n.title)
+                question = 'Are you sure you want to delete {} ?.\n'.format(n.title)
                 question += 'This is irreversible [spell out yes]: '
                 question = colored(question, 'red', self.termcolor)
                 if (input(question).lower() in ['yes']):
@@ -735,7 +735,7 @@ class GKeep(cmd.Cmd):
         if self.current.type.name == 'List':
             for item in self.current.items:
                 if arg == item.text:
-                    question = 'Are you sure you want to delete {} ?. '.format(arg)
+                    question = 'Are you sure you want to delete {} ?.\n'.format(arg)
                     question += 'This is irreversible [spell out yes]: '
                     question = colored(question, 'red', self.termcolor)
                     if (input(question).lower() in ['yes']):
