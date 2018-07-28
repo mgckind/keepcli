@@ -448,6 +448,8 @@ class GKeep(cmd.Cmd):
                 if lists and n.type.name == 'Note':
                     display = False
             data = {'title': get_color(n, self.termcolor), 'status': status, 'type': n.type.name}
+            if n.type.name == 'List':
+                data['type'] = colored(n.type.name, 'cyan', self.termcolor)
             if display:
                 print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
             if show and lists and n.type.name == 'List':
@@ -469,12 +471,9 @@ class GKeep(cmd.Cmd):
                     display = False
                 if lists and n.type.name == 'Note':
                     display = False
-            try:
-                data = {'title': colored(n.title, colors[n.color.name.lower()], self.termcolor), 'status': status,
-                        'type': n.type.name}
-            except KeyError:
-                data = {'title': colored(n.title, 'white', self.termcolor), 'status': status,
-                        'type': n.type.name}
+            data = {'title': get_color(n, self.termcolor), 'status': status, 'type': n.type.name}
+            if n.type.name == 'List':
+                data['type'] = colored(n.type.name, 'cyan', self.termcolor)
             if display:
                 print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
             if show and lists and n.type.name == 'List':
