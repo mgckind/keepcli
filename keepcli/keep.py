@@ -197,6 +197,7 @@ class GKeep(cmd.Cmd):
             func()
         else:
             # self.stdout.write(str(self.intro) + "\n")
+            print(colored('\n\n       HELP       \n\n', 'green', self.termcolor))
             names = self.get_names()
             cmds_doc = []
             cmds_undoc = []
