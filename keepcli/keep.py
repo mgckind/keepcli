@@ -635,7 +635,9 @@ class GKeep(cmd.Cmd):
                 print('Current List set to: {}'.format(n.title))
                 self.current = n
                 self.conf['current'] = n.title
-                self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
+                self.prompt = 'keepcli [{}] ~> '.format(
+                     colored(n.title[:15] + (n.title[15:] and '...'),
+                             get_color(n, self.termcolor, color_only=True), self.termcolor))
                 self.current_checked = [i.text for i in n.checked]
                 self.current_unchecked = [i.text for i in n.unchecked]
                 self.current_all_items = self.current_checked + self.current_unchecked
@@ -661,7 +663,9 @@ class GKeep(cmd.Cmd):
             if arg == n.title and arg in self.notes:
                 print()
                 print('Current Note set to: {}'.format(n.title))
-                self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
+                self.prompt = 'keepcli [{}] ~> '.format(
+                     colored(n.title[:15] + (n.title[15:] and '...'),
+                             get_color(n, self.termcolor, color_only=True), self.termcolor))
                 self.current = n
                 self.conf['current'] = n.title
 
