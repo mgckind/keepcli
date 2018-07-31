@@ -660,6 +660,9 @@ class GKeep(cmd.Cmd):
             Use shortcut ul to select current list
             ~> ul <title>
         """
+        if arg == '':
+            self.do_help('useList')
+            return
         for n in self.entries:
             if arg == n.title and arg in self.lists:
                 print()
@@ -690,6 +693,9 @@ class GKeep(cmd.Cmd):
             Use shortcut un to select current note
             ~> un <title>
         """
+        if arg == '':
+            self.do_help('useNote')
+            return
         for n in self.entries:
             if arg == n.title and arg in self.notes:
                 print()
@@ -837,6 +843,9 @@ class GKeep(cmd.Cmd):
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
+        if arg == '':
+            self.do_help('uncheckItem')
+            return
         if self.current.type.name == 'List':
             for item in self.current.items:
                 if arg == item.text:
@@ -901,6 +910,9 @@ class GKeep(cmd.Cmd):
         done = False
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
+            return
+        if arg == '':
+            self.do_help('moveItem')
             return
         move_args = argparse.ArgumentParser(prog='', usage='', add_help=False)
         move_args.add_argument('item', action='store', default=None, nargs='+')
@@ -970,16 +982,23 @@ class GKeep(cmd.Cmd):
 
     def do_load(self, arg):
         """
-        Load entries from a previously saved pickle. For offline use
+        Load entries from a previously saved pickle using dump. For offline use
 
         Usage:
             ~> load
         """
-        with open(self.auth_file, 'r') as auth:
-            conn = yaml.load(auth)
-        self.username = conn['user']
-        self.keep = pickle.load(open(os.path.join(self.kcli_path, self.username+'.kci'), 'rb'))
-        self.do_refresh(None)
+        try:
+            with open(self.auth_file, 'r') as auth:
+                conn = yaml.load(auth)
+            self.username = conn['user']
+            self.keep = pickle.load(open(os.path.join(self.kcli_path, self.username+'.kci'), 'rb'))
+            self.do_refresh(None)
+        except Exception as e:
+            print(colored('\nSomething failed, did you '
+                          'run dump (or delete previous run)?', 'red', self.termcolor))
+            print(colored(e, 'red', self.termcolor))
+            self.do_help('load')
+            return
 
     def do_clear(self, line):
         """
