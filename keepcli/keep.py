@@ -341,6 +341,9 @@ class GKeep(cmd.Cmd):
     def do_el(self, arg):
         self.do_entries('lists --show')
 
+    def do_elp(self, arg):
+        self.do_entries('lists --show --pinned')
+
     def do_exit(self, arg):
         """
         Exit the program
@@ -401,6 +404,7 @@ class GKeep(cmd.Cmd):
 
         Optional Arguments:
             --show           : Shows all unchecked items for all Active lists
+            --pinned         : Shows only pinned entries
 
         Ex:
             ~> entries lists --show
@@ -408,9 +412,12 @@ class GKeep(cmd.Cmd):
         Note:
             Use shortcut el to replace entries lists --show
             ~> el
+            Use shortcut elp to replace entries lists --show --pinned
+            ~> elp
         """
         line = "".join(arg.split())
         show = True if '--show' in line else False
+        pinned_only = True if '--pinned' in line else False
         active = True
         notes = False
         lists = False
@@ -457,29 +464,29 @@ class GKeep(cmd.Cmd):
                 print_list(n, self.termcolor, only_unchecked=True)
                 print()
         print()
-        if len(unpinned) > 0:
+        if len(unpinned) and not pinned_only > 0:
             print('* Unpinned entries *: \n')
-        for n in unpinned:
-            display = True
-            if n.trashed:
-                status = 'Deleted'
-                if active or notes or lists:
-                    display = False
-            else:
-                status = 'Active'
-                if notes and n.type.name == 'List':
-                    display = False
-                if lists and n.type.name == 'Note':
-                    display = False
-            data = {'title': get_color(n, self.termcolor), 'status': status, 'type': n.type.name}
-            if n.type.name == 'List':
-                data['type'] = colored(n.type.name, 'cyan', self.termcolor)
-            if display:
-                print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
-            if show and lists and n.type.name == 'List':
-                self.do_clear(None)
-                print_list(n, self.termcolor, only_unchecked=True)
-                print()
+            for n in unpinned:
+                display = True
+                if n.trashed:
+                    status = 'Deleted'
+                    if active or notes or lists:
+                        display = False
+                else:
+                    status = 'Active'
+                    if notes and n.type.name == 'List':
+                        display = False
+                    if lists and n.type.name == 'Note':
+                        display = False
+                data = {'title': get_color(n, self.termcolor), 'status': status, 'type': n.type.name}
+                if n.type.name == 'List':
+                    data['type'] = colored(n.type.name, 'cyan', self.termcolor)
+                if display:
+                    print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
+                if show and lists and n.type.name == 'List':
+                    self.do_clear(None)
+                    print_list(n, self.termcolor, only_unchecked=True)
+                    print()
         print()
 
     def complete_entries(self, text, line, start_index, end_index):
@@ -740,7 +747,7 @@ class GKeep(cmd.Cmd):
             return
         deleted = False
         delete_all_checked = False
-        q = '\nAre you sure you want to delete all checked itesm?\n'
+        q = '\nAre you sure you want to delete all checked items?\n'
         q += 'This action is irreversible [spell out yes]: '
         q = colored(q, 'red', self.termcolor)
         if self.current.type.name == 'List' and '--all-checked' in arg:
