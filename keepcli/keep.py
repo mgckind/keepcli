@@ -120,6 +120,9 @@ class GKeep(cmd.Cmd):
     def __init__(self, auth_file, conf_file, offline=False):
         # super().__init__()
         cmd.Cmd.__init__(self)
+        self.do_clear(None)
+        print('\nWelcome to keepcli {}, '
+              'use help or ? to list possible commands.\n\n'.format(__version__))
         self.offline = offline
         self.auth_file = auth_file
         self.conf_file = conf_file
@@ -196,6 +199,7 @@ class GKeep(cmd.Cmd):
                 return
             func()
         else:
+            self.do_clear(None)
             # self.stdout.write(str(self.intro) + "\n")
             print(colored('\n\n       HELP       \n\n', 'green', self.termcolor))
             names = self.get_names()
@@ -415,6 +419,7 @@ class GKeep(cmd.Cmd):
             Use shortcut elp to replace entries lists --show --pinned
             ~> elp
         """
+        self.do_clear(None)
         line = "".join(arg.split())
         show = True if '--show' in line else False
         pinned_only = True if '--pinned' in line else False
@@ -460,7 +465,6 @@ class GKeep(cmd.Cmd):
             if display:
                 print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
             if show and lists and n.type.name == 'List':
-                self.do_clear(None)
                 print_list(n, self.termcolor, only_unchecked=True)
                 print()
         print()
@@ -484,7 +488,6 @@ class GKeep(cmd.Cmd):
                 if display:
                     print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
                 if show and lists and n.type.name == 'List':
-                    self.do_clear(None)
                     print_list(n, self.termcolor, only_unchecked=True)
                     print()
         print()
@@ -952,8 +955,8 @@ class GKeep(cmd.Cmd):
             ~> clean
         """
         sys.stdout.flush()
-        if line is None:
-            return
+        # if line is None:
+        #    return
         try:
             tmp = os.system('clear')
         except:
@@ -999,7 +1002,6 @@ def cli():
     write_conf(conf_file)
     args = kcliparser.get_args()
     offline = True if args.offline else False
-    print('\nWelcome to keepcli, use help or ? to list possible commands.\n\n')
     GKeep(auth_file=auth_file, conf_file=conf_file, offline=offline).cmdloop()
 
 
