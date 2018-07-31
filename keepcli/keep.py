@@ -530,7 +530,7 @@ class GKeep(cmd.Cmd):
         for n in self.entries:
             if arg == n.title:
                 print()
-                question = 'Are you sure you want to delete {} ?.\n'.format(n.title)
+                question = '\nAre you sure you want to delete {} ?.\n'.format(n.title)
                 question += 'This is irreversible [spell out yes]: '
                 question = colored(question, 'red', self.termcolor)
                 if (input(question).lower() in ['yes']):
@@ -727,30 +727,53 @@ class GKeep(cmd.Cmd):
 
     def do_deleteItem(self, arg):
         """
-        KEEP:Delete an item from a list (checked or unchecked)
+        KEEP:Delete an item from a list (checked or unchecked), using --all-checked you can delete
+        all checked items
 
         Usage:
             ~> deleteItem <item in current list>
+            ~> deleteItem --all-checked
         """
         if self.current is None:
             print(colored('Not Note or List is selected, use the command: useList or useNote',
                           'red', self.termcolor))
             return
+        deleted = False
+        delete_all_checked = False
+        q = '\nAre you sure you want to delete all checked itesm?\n'
+        q += 'This action is irreversible [spell out yes]: '
+        q = colored(q, 'red', self.termcolor)
+        if self.current.type.name == 'List' and '--all-checked' in arg:
+            if (input(q).lower() in ['yes']):
+                delete_all_checked = True
+                arg = ''
+            else:
+                return
         if self.current.type.name == 'List':
             for item in self.current.items:
+                if delete_all_checked and item.checked:
+                    item.delete()
+                    deleted = True
                 if arg == item.text:
-                    question = 'Are you sure you want to delete {} ?.\n'.format(arg)
+                    question = '\nAre you sure you want to delete {} ?.\n'.format(arg)
                     question += 'This is irreversible [spell out yes]: '
                     question = colored(question, 'red', self.termcolor)
                     if (input(question).lower() in ['yes']):
                         item.delete()
-            self.do_refresh(None)
-            self.do_useList(self.current.title)
+                    deleted = True
+                    break
+            if deleted:
+                self.do_refresh(None)
+                self.do_useList(self.current.title)
+            else:
+                print('\n Item: [{}] does not exists\n'.format(arg))
         else:
             print('{} is not a List'.format(self.current.title))
 
     def complete_deleteItem(self, text, line, start_index, end_index):
         if text:
+            if '--a' in line:
+                return ['all-checked']
             temp = line[line.startswith('deleteItem') and len('deleteItem'):].lstrip()
             temp2 = temp.split()[-1]
             return [temp2 + option[option.startswith(temp) and len(temp):]
