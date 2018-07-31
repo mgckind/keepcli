@@ -174,6 +174,13 @@ class GKeep(cmd.Cmd):
         self.termcolor = 1 if self.conf['termcolor'] else 0
         self.autosync = True if self.conf['autosync'] else False
 
+    def default(self, arg):
+        print()
+        print("Invalid command")
+        print("Type 'help' or '?' to list available commands")
+        print()
+
+
     def do_help(self, arg):
         """
         List available commands with "help" or detailed help with "help cmd".
