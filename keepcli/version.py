@@ -1,6 +1,6 @@
 """keepcli version"""
 
-commit = '7e8cbce'
+commit = '0478909'
 
 dev = 'dev-{}'.format(commit)
 version_tag = (1, 0, 1, dev)
