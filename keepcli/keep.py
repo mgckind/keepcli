@@ -120,9 +120,13 @@ class GKeep(cmd.Cmd):
     def __init__(self, auth_file, conf_file, offline=False):
         # super().__init__()
         cmd.Cmd.__init__(self)
+        self.do_clear(None)
+        print('\nWelcome to keepcli {}, '
+              'use help or ? to list possible commands.\n\n'.format(__version__))
         self.offline = offline
         self.auth_file = auth_file
         self.conf_file = conf_file
+        self.current = None
         self.update_config()
         self.kcli_path = os.path.dirname(self.auth_file)
         if self.offline:
@@ -130,7 +134,6 @@ class GKeep(cmd.Cmd):
         self.prompt = 'keepcli [] ~> '
         self.keep = gkeepapi.Keep()
         if not self.offline:
-            print('\nLogging in...\n')
             try:
                 with open(auth_file, 'r') as auth:
                     conn = yaml.load(auth)
@@ -140,6 +143,7 @@ class GKeep(cmd.Cmd):
                       '(Google App password is strongly recommended)\n'.format(auth_file))
                 conn['user'] = input('Enter username : ')
                 conn['passwd'] = getpass.getpass(prompt='Enter password : ')
+            print('\nLogging {} in...\n'.format(colored(conn['user'], 'green', self.termcolor)))
             try:
                 self.connect = self.keep.login(conn['user'], conn['passwd'])
                 with open(auth_file, 'w') as auth:
@@ -154,9 +158,10 @@ class GKeep(cmd.Cmd):
             self.do_refresh(None, force_sync=True)
         else:
             print(colored('\nRunning Offline\n', "red", self.termcolor))
-        self.current = None
         self.complete_ul = self.complete_useList
         self.complete_un = self.complete_useNote
+        self.do_useNote(self.conf['current'])
+        self.do_useList(self.conf['current'])
         self.doc_header = colored(
                           ' *Other Commands*', "cyan", self.termcolor) + ' (type help <command>):'
         self.keep_header = colored(
@@ -168,6 +173,13 @@ class GKeep(cmd.Cmd):
             self.conf = yaml.load(confile)
         self.termcolor = 1 if self.conf['termcolor'] else 0
         self.autosync = True if self.conf['autosync'] else False
+
+    def default(self, arg):
+        print()
+        print("Invalid command")
+        print("Type 'help' or '?' to list available commands")
+        print()
+
 
     def do_help(self, arg):
         """
@@ -194,7 +206,9 @@ class GKeep(cmd.Cmd):
                 return
             func()
         else:
+            self.do_clear(None)
             # self.stdout.write(str(self.intro) + "\n")
+            print(colored('\n\n--------------- keepcli help ---------------\n\n', 'green', self.termcolor))
             names = self.get_names()
             cmds_doc = []
             cmds_undoc = []
@@ -255,12 +269,13 @@ class GKeep(cmd.Cmd):
         """
         Undocumented shortcuts used in keepcli.
 
-        ul: useList              --> select a list
-        un: useNote              --> select a note
-        ai: addItem              --> add item to a current List
-        ai: addText              --> add text to a current Note
-        cs: current show         --> shows current List/Note
-        el: entries list --show  --> show all unchecked items from all active lists
+        ul:  useList                       --> select a list
+        un:  useNote                       --> select a note
+        ai:  addItem                       --> add item to a current List
+        ai:  addText                       --> add text to a current Note
+        cs:  current show                  --> shows current List/Note
+        el:  entries list --show           --> show all unchecked items from all active lists
+        elp: entries list --show  --pinned --> show all unchecked items from all pinned lists
         """
         self.do_help('shortcuts')
 
@@ -313,10 +328,10 @@ class GKeep(cmd.Cmd):
             ~> whoami
         """
         print()
-        print('User    : {}'.format(self.username))
-        print('Entries : {} Notes and {} Lists'.format(len(self.notes), len(self.lists)))
         allitem = sum([len(n.items) for n in self.lists_obj])
         uncheck = sum([len(n.unchecked) for n in self.lists_obj])
+        print('User         : {}'.format(self.username))
+        print('Entries      : {} Notes and {} Lists'.format(len(self.notes), len(self.lists)))
         print('Uncheck Items: {} out of {}'.format(uncheck, allitem))
         print()
 
@@ -338,10 +353,15 @@ class GKeep(cmd.Cmd):
     def do_el(self, arg):
         self.do_entries('lists --show')
 
+    def do_elp(self, arg):
+        self.do_entries('lists --show --pinned')
+
     def do_exit(self, arg):
         """
         Exit the program
         """
+        with open(self.conf_file, 'w') as conf:
+            yaml.dump(self.conf, conf, default_flow_style=False)
         return True
 
     def do_config(self, arg):
@@ -356,10 +376,14 @@ class GKeep(cmd.Cmd):
         """
         line = "".join(arg.split())
         if arg == '':
-            print('Current configuration:\n')
+            self.do_clear(None)
+            print(colored('\n** Current configuration:\n', 'green', self.termcolor))
+            print('===============================')
             for item in self.conf.items():
-                print('{} : {}'.format(*item))
-                print()
+                print('{: <10} : {}'.format(*item))
+            print('===============================')
+            print()
+            self.do_help('config')
         if 'set' in line:
             action = line[line.startswith('set') and len('set'):].lstrip()
             action = "".join(action.split())
@@ -396,6 +420,7 @@ class GKeep(cmd.Cmd):
 
         Optional Arguments:
             --show           : Shows all unchecked items for all Active lists
+            --pinned         : Shows only pinned entries
 
         Ex:
             ~> entries lists --show
@@ -403,9 +428,13 @@ class GKeep(cmd.Cmd):
         Note:
             Use shortcut el to replace entries lists --show
             ~> el
+            Use shortcut elp to replace entries lists --show --pinned
+            ~> elp
         """
+        self.do_clear(None)
         line = "".join(arg.split())
         show = True if '--show' in line else False
+        pinned_only = True if '--pinned' in line else False
         active = True
         notes = False
         lists = False
@@ -443,39 +472,36 @@ class GKeep(cmd.Cmd):
                 if lists and n.type.name == 'Note':
                     display = False
             data = {'title': get_color(n, self.termcolor), 'status': status, 'type': n.type.name}
+            if n.type.name == 'List':
+                data['type'] = colored(n.type.name, 'cyan', self.termcolor)
             if display:
                 print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
             if show and lists and n.type.name == 'List':
-                self.do_clear(None)
                 print_list(n, self.termcolor, only_unchecked=True)
                 print()
         print()
-        if len(unpinned) > 0:
+        if len(unpinned) and not pinned_only > 0:
             print('* Unpinned entries *: \n')
-        for n in unpinned:
-            display = True
-            if n.trashed:
-                status = 'Deleted'
-                if active or notes or lists:
-                    display = False
-            else:
-                status = 'Active'
-                if notes and n.type.name == 'List':
-                    display = False
-                if lists and n.type.name == 'Note':
-                    display = False
-            try:
-                data = {'title': colored(n.title, colors[n.color.name.lower()], self.termcolor), 'status': status,
-                        'type': n.type.name}
-            except KeyError:
-                data = {'title': colored(n.title, 'white', self.termcolor), 'status': status,
-                        'type': n.type.name}
-            if display:
-                print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
-            if show and lists and n.type.name == 'List':
-                self.do_clear(None)
-                print_list(n, self.termcolor, only_unchecked=True)
-                print()
+            for n in unpinned:
+                display = True
+                if n.trashed:
+                    status = 'Deleted'
+                    if active or notes or lists:
+                        display = False
+                else:
+                    status = 'Active'
+                    if notes and n.type.name == 'List':
+                        display = False
+                    if lists and n.type.name == 'Note':
+                        display = False
+                data = {'title': get_color(n, self.termcolor), 'status': status, 'type': n.type.name}
+                if n.type.name == 'List':
+                    data['type'] = colored(n.type.name, 'cyan', self.termcolor)
+                if display:
+                    print('- {title: <30} {status: <10}  [ {type} ]'.format(**data))
+                if show and lists and n.type.name == 'List':
+                    print_list(n, self.termcolor, only_unchecked=True)
+                    print()
         print()
 
     def complete_entries(self, text, line, start_index, end_index):
@@ -523,10 +549,13 @@ class GKeep(cmd.Cmd):
         Usage:
             ~> delete <name of list/note>
         """
+        if arg == '':
+            self.do_help('delete')
+            return
         for n in self.entries:
             if arg == n.title:
                 print()
-                question = 'Are you sure you want to delete {} ?. '.format(n.title)
+                question = '\nAre you sure you want to delete {} ?.\n'.format(n.title)
                 question += 'This is irreversible [spell out yes]: '
                 question = colored(question, 'red', self.termcolor)
                 if (input(question).lower() in ['yes']):
@@ -559,22 +588,25 @@ class GKeep(cmd.Cmd):
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
-        print('Current entry: {}'.format(get_color(self.current, self.termcolor)))
+        print('\nCurrent entry: {}'.format(get_color(self.current, self.termcolor)))
         if 'show' in arg:
             self.do_show(self.current.title)
-        if 'pin' in arg:
+        elif 'pin' in arg:
             self.current.pinned = True
             self.do_refresh(None)
-        if 'unpin' in arg:
+        elif 'unpin' in arg:
             self.current.pinned = False
             self.do_refresh(None)
-        if 'color' in arg:
+        elif 'color' in arg:
             color = arg[arg.startswith('color') and len('color'):].lstrip()
             try:
                 self.current.color = colorsGK[color]
                 self.do_refresh(None)
             except:
                 print('Color {} do not exist'.format(color))
+        else:
+            print()
+            self.do_help('current')
 
     def complete_current(self, text, line, start_index, end_index):
         if 'color' in line:
@@ -595,16 +627,25 @@ class GKeep(cmd.Cmd):
         Usage:
             ~> create note <title>
             ~> create list <title>
+
         """
+        if arg == '':
+            self.do_help('create')
         line = arg
         if line.startswith('note'):
             title = line[line.startswith('note') and len('note'):].lstrip()
-            print('create note: {}'.format(title))
+            if title == '':
+                print(colored('\nTitle cannot be empty\n', 'red', self.termcolor))
+                return
+            print('Creating note: {}'.format(title))
             self.keep.createNote(title)
             self.do_refresh(None)
         if line.startswith('list'):
             title = line[line.startswith('list') and len('list'):].lstrip()
-            print('create list: {}'.format(title))
+            if title == '':
+                print(colored('\nTitle cannot be empty\n', 'red', self.termcolor))
+                return
+            print('Creating list: {}'.format(title))
             self.keep.createList(title)
             self.do_refresh(None)
 
@@ -626,11 +667,14 @@ class GKeep(cmd.Cmd):
             ~> ul <title>
         """
         for n in self.entries:
-            if arg == n.title:
+            if arg == n.title and arg in self.lists:
                 print()
                 print('Current List set to: {}'.format(n.title))
                 self.current = n
-                self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
+                self.conf['current'] = n.title
+                self.prompt = 'keepcli [{}] ~> '.format(
+                     colored(n.title[:15] + (n.title[15:] and '...'),
+                             get_color(n, self.termcolor, color_only=True), self.termcolor))
                 self.current_checked = [i.text for i in n.checked]
                 self.current_unchecked = [i.text for i in n.unchecked]
                 self.current_all_items = self.current_checked + self.current_unchecked
@@ -653,11 +697,14 @@ class GKeep(cmd.Cmd):
             ~> un <title>
         """
         for n in self.entries:
-            if arg == n.title:
+            if arg == n.title and arg in self.notes:
                 print()
                 print('Current Note set to: {}'.format(n.title))
-                self.prompt = 'keepcli [{}] ~> '.format(n.title[:15] + (n.title[15:] and '...'))
+                self.prompt = 'keepcli [{}] ~> '.format(
+                     colored(n.title[:15] + (n.title[15:] and '...'),
+                             get_color(n, self.termcolor, color_only=True), self.termcolor))
                 self.current = n
+                self.conf['current'] = n.title
 
     def complete_useNote(self, text, line, start_index, end_index):
         if text:
@@ -688,15 +735,24 @@ class GKeep(cmd.Cmd):
         Usage:
             ~> checkItem <item in current list>
         """
+        checked = False
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
         if self.current.type.name == 'List':
+            if arg == '':
+                self.do_help('checkItem')
+                return
             for item in self.current.items:
                 if arg == item.text:
                     item.checked = True
-            self.do_refresh(None)
-            self.do_useList(self.current.title)
+                    checked = True
+            if checked:
+                self.do_refresh(None)
+                self.do_useList(self.current.title)
+            else:
+                print(colored('\nItem not found\n', 'red', self.termcolor))
+                return
         else:
             print('{} is not a List'.format(self.current.title))
 
@@ -717,30 +773,56 @@ class GKeep(cmd.Cmd):
 
     def do_deleteItem(self, arg):
         """
-        KEEP:Delete an item from a list (checked or unchecked)
+        KEEP:Delete an item from a list (checked or unchecked), using --all-checked you can delete
+        all checked items
 
         Usage:
-            ~> deleteItem <item in current list>
+            ~> deleteItem <item in current list>  --> delete a single (un)checked item
+            ~> deleteItem --all-checked           --> delete all checked items
         """
         if self.current is None:
             print(colored('Not Note or List is selected, use the command: useList or useNote',
                           'red', self.termcolor))
             return
+        if arg == '':
+            self.do_help('deleteItem')
+            return
+        deleted = False
+        delete_all_checked = False
+        q = '\nAre you sure you want to delete all checked items?\n'
+        q += 'This action is irreversible [spell out yes]: '
+        q = colored(q, 'red', self.termcolor)
+        if self.current.type.name == 'List' and '--all-checked' in arg:
+            if (input(q).lower() in ['yes']):
+                delete_all_checked = True
+                arg = ''
+            else:
+                return
         if self.current.type.name == 'List':
             for item in self.current.items:
+                if delete_all_checked and item.checked:
+                    item.delete()
+                    deleted = True
                 if arg == item.text:
-                    question = 'Are you sure you want to delete {} ?. '.format(arg)
+                    question = '\nAre you sure you want to delete {} ?.\n'.format(arg)
                     question += 'This is irreversible [spell out yes]: '
                     question = colored(question, 'red', self.termcolor)
                     if (input(question).lower() in ['yes']):
                         item.delete()
-            self.do_refresh(None)
-            self.do_useList(self.current.title)
+                    deleted = True
+                    break
+            if deleted:
+                self.do_refresh(None)
+                self.do_useList(self.current.title)
+            else:
+                print('\n Item: [{}] does not exists\n'.format(arg))
         else:
             print('{} is not a List'.format(self.current.title))
 
     def complete_deleteItem(self, text, line, start_index, end_index):
         if text:
+            if '--a' in line:
+                return ['all-checked']
             temp = line[line.startswith('deleteItem') and len('deleteItem'):].lstrip()
             temp2 = temp.split()[-1]
             return [temp2 + option[option.startswith(temp) and len(temp):]
@@ -761,6 +843,7 @@ class GKeep(cmd.Cmd):
         Usage:
             ~> uncheckItem <item in current list>
         """
+        unchecked = False
         if self.current is None:
             print('Not Note or List is selected, use the command: useList or useNote')
             return
@@ -768,8 +851,13 @@ class GKeep(cmd.Cmd):
             for item in self.current.items:
                 if arg == item.text:
                     item.checked = False
-            self.do_refresh(None)
-            self.do_useList(self.current.title)
+                    unchecked = True
+            if unchecked:
+                self.do_refresh(None)
+                self.do_useList(self.current.title)
+            else:
+                print(colored('\nItem not found\n', 'red', self.termcolor))
+                return
         else:
             print('{} is not a List'.format(self.current.title))
 
@@ -806,7 +894,11 @@ class GKeep(cmd.Cmd):
             print('Not Note or List is selected, use the command: useList or useNote')
             return
         if self.current.type.name == 'List':
-            self.current.add(arg.lstrip())
+            new = arg.lstrip()
+            if new == '':
+                self.do_help('addItem')
+                return
+            self.current.add(new)
             self.do_refresh(None)
             if self.autosync:
                 self.do_useList(self.current.title)
@@ -828,7 +920,7 @@ class GKeep(cmd.Cmd):
         move_args = argparse.ArgumentParser(prog='', usage='', add_help=False)
         move_args.add_argument('item', action='store', default=None, nargs='+')
         move_args.add_argument('--list', help='Name of the destination list',
-                               action='store', default=None)
+                               action='store', default=None, nargs='+')
 
         try:
             args = move_args.parse_args(arg.split())
@@ -840,8 +932,9 @@ class GKeep(cmd.Cmd):
             return
         else:
             new_arg = arg[:arg.index('--list')].rstrip()
+            new_dest = arg[arg.index('--list')+6:].lstrip()
             for n in self.entries:
-                if args.list == n.title:
+                if new_dest == n.title:
                     destination = n
             if destination is None:
                 print('List {} does not exist'.format(args.list))
@@ -864,11 +957,15 @@ class GKeep(cmd.Cmd):
 
     def complete_moveItem(self, text, line, start_index, end_index):
         if text:
+            if '--list' in line:
+                return [option for option in self.lists if option.startswith(text)]
             temp = line[line.startswith('moveItem') and len('moveItem'):].lstrip()
             temp2 = temp.split()[-1]
             return [temp2 + option[option.startswith(temp) and len(temp):]
                     for option in self.current_unchecked if option.startswith(temp)]
         else:
+            if '--list' in line:
+                return self.lists
             temp = line[line.startswith('moveItem') and len('moveItem'):].lstrip()
             if temp == '':
                 return self.current_unchecked
@@ -907,8 +1004,8 @@ class GKeep(cmd.Cmd):
             ~> clean
         """
         sys.stdout.flush()
-        if line is None:
-            return
+        # if line is None:
+        #    return
         try:
             tmp = os.system('clear')
         except:
@@ -922,6 +1019,7 @@ def write_conf(conf_file):
     defaults = {
                 'termcolor': True,
                 'autosync': True,
+                'current': '',
                }
     if not os.path.exists(conf_file):
         with open(conf_file, 'w') as conf:
@@ -953,7 +1051,6 @@ def cli():
     write_conf(conf_file)
     args = kcliparser.get_args()
     offline = True if args.offline else False
-    print('\nWelcome to keepcli, use help or ? to list possible commands.\n\n')
     GKeep(auth_file=auth_file, conf_file=conf_file, offline=offline).cmdloop()
 
 
