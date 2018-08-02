@@ -1,4 +1,4 @@
-# keepcli <a href="https://github.com/mgckind/keepcli/releases/tag/1.0.1"> <img src="https://img.shields.io/badge/release-v1.0.1-blue.svg" alt="latest release" /></a> <a href="https://github.com/mgckind/keepcli/blob/master/LICENSE.txt"><img src="https://img.shields.io/badge/license-NCSA%20License-blue.svg" alt="License" /> </a> <a href="https://pypi.python.org/pypi/keepcli/1.0.1"><img src="https://img.shields.io/badge/pypi-v1.0.1-orange.svg" alt="pypi version"/></a>
+# keepcli <a href="https://github.com/mgckind/keepcli/releases/tag/v1.0.1"> <img src="https://img.shields.io/badge/release-v1.0.1-blue.svg" alt="latest release" /></a> <a href="https://github.com/mgckind/keepcli/blob/master/LICENSE.txt"><img src="https://img.shields.io/badge/license-NCSA%20License-blue.svg" alt="License" /> </a> <a href="https://pypi.python.org/pypi/keepcli/1.0.1"><img src="https://img.shields.io/badge/pypi-v1.0.1-orange.svg" alt="pypi version"/></a>
 
 A simple and unofficial interactive command line interpreter client for [Google Keep](https://keep.google.com/).
 
