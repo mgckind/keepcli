@@ -1,10 +1,13 @@
-# keepcli
+# keepcli <a href="https://github.com/mgckind/keepcli/releases/tag/1.0.1"> <img src="https://img.shields.io/badge/release-v1.0.1-blue.svg" alt="latest release" /></a> <a href="https://github.com/mgckind/keepcli/blob/master/LICENSE.txt"><img src="https://img.shields.io/badge/license-NCSA%20License-blue.svg" alt="License" /> </a> <a href="https://pypi.python.org/pypi/keepcli/1.0.1"><img src="https://img.shields.io/badge/pypi-v1.0.1-orange.svg" alt="pypi version"/></a>
 
 A simple and unofficial interactive command line interpreter client for [Google Keep](https://keep.google.com/).
 
 It uses the nice unofficial API client [gkeepapi](https://github.com/kiwiz/gkeepapi) 
 
 As described also in that repository, *keepcli* is not supported nor endorsed by Google.
+
+![simple_demo](cover/simple_demo.gif)
+
 
 
 ## Development
@@ -16,7 +19,13 @@ As a very active [Google Keep](https://keep.google.com/) user (among other Notes
 Some offline features have not tested in too much detail and there might be some hidden issues, this is note a production-grade tool and is distributed 'as is'.
 
 
+## Current version
+
+**keepcli 1.0.1**
+
 ## Installation
+
+Uses `python3`
 
 For development version:
 
