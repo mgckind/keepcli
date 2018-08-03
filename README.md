@@ -10,6 +10,7 @@ As described also in that repository, *keepcli* is not supported nor endorsed by
 
 ![simple_demo](cover/simple_demo.gif)
 
+Let's see how everything is synchronized with the web interface. 
 
 ![browser_demo](cover/browser_demo.gif)
 
